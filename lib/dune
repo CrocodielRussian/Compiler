@@ -1,0 +1,3 @@
+(library
+ (name compiler)
+ (modules asm_tree parser))
