@@ -1,0 +1,11 @@
+lib: [
+  "_build/install/default/lib/compiler/META"
+  "_build/install/default/lib/compiler/dune-package"
+  "_build/install/default/lib/compiler/opam"
+]
+bin: [
+  "_build/install/default/bin/compiler"
+]
+doc: [
+  "_build/install/default/doc/compiler/LICENSE"
+]

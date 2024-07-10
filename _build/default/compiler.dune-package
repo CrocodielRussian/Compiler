@@ -1,0 +1,4 @@
+(lang dune 3.16)
+(name compiler)
+(sections (lib .) (bin ../../bin) (doc ../../doc/compiler))
+(files (lib (META dune-package opam)) (bin (compiler)) (doc (LICENSE)))
