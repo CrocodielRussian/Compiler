@@ -17,7 +17,7 @@ type expr =
 | Binary of expr * oper * expr
 
 
-let text = "10"
+let text = "                -10         "
 let pos = ref 0
 let length = String.length text
 
@@ -37,22 +37,46 @@ let positive_number text pos =
     then Some( Number(int_of_string !acc) ) 
     else None;;
 
+
+let negate value = 
+  match value with
+    | Some n -> Some (Unary(Minus, n))
+    | None -> None
+
 let rec simplest_expr text pos = 
   skip_whitespaces text pos;
   if !pos >= String.length text 
     then None
     else
       match text.[!pos] with
-      | '-' -> incr pos; let res = simplest_expr text pos in 
-        match res with
-          | Some n -> Some (Unary(Minus, n))
-          | None -> None
+      | '-' -> incr pos; simplest_expr text pos |> negate 
       | '+' -> incr pos; simplest_expr text pos
       | '(' -> incr pos; None
       | '0'..'9' -> positive_number text pos
       | _ -> None;;
 
+
+let rec expr_to_string = function
+  | Number n -> string_of_int n
+  | Unary (op, e) -> 
+      let op_str = match op with
+        | Plus -> "+"
+        | Minus -> "-"
+        | Multiply -> "*"
+        | Divide -> "/"
+      in
+      op_str ^ "(" ^ expr_to_string e ^ ")"
+  | Binary (e1, op, e2) ->
+      let op_str = match op with
+        | Plus -> "+"
+        | Minus -> "-"
+        | Multiply -> "*"
+        | Divide -> "/"
+      in
+      "(" ^ expr_to_string e1 ^ " " ^ op_str ^ " " ^ expr_to_string e2 ^ ")"
+
+
 let res = simplest_expr text pos;;
 match res with
-| Some n -> print_endline n
+| Some n -> expr_to_string n |> print_endline
 | None -> prerr_endline "None"
