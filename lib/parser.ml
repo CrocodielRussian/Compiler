@@ -1,9 +1,6 @@
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
-let is_whitespace = function ' ' -> true | _ -> false
-
-let int_option_to_string (i : int option) : string =
-  match i with Some x -> string_of_int x | None -> "None"
+let is_whitespace = function ' ' | '\r' | '\t' | '\n' -> true | _ -> false
 
 let skip_whitespaces text pos =
   let length = String.length text in
@@ -32,6 +29,23 @@ let positive_number text pos =
     failwith
       ("Parser Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find numbers.")
+
+let identifier text pos =
+  let acc = ref "" in
+  while !pos < String.length text && is_alpha text.[!pos] do
+    acc := !acc ^ String.make 1 text.[!pos];
+    incr pos
+  done;
+  !acc
+
+let variable text pos =
+  skip_whitespaces text pos;
+  let acc = identifier text pos in
+  if String.length acc > 0 then Variable acc
+  else
+    failwith
+      ("Parser Error: on position " ^ (!pos |> string_of_int)
+     ^ " couldn't find variable.")
 
 let op_add = function '+' -> Plus | '-' -> Minus | _ -> Invalid
 let op_mult = function '*' -> Multiply | '/' -> Divide | _ -> Invalid
@@ -86,6 +100,7 @@ and simplest_expr text pos =
             ("Parse Error: on position " ^ (!pos |> string_of_int)
            ^ " couldn't find symbol of closed bracket: ')'.")
     | '0' .. '9' -> positive_number text pos
+    | 'a' .. 'z' | 'A' .. 'Z' -> variable text pos
     | _ ->
         failwith
           ("Parse Error: on position " ^ (!pos |> string_of_int)
@@ -138,14 +153,6 @@ type statement =
 
 type program = Program of statement list
 
-let identifier text pos =
-  let acc = ref "" in
-  while !pos < String.length text && is_alpha text.[!pos] do
-    acc := !acc ^ String.make 1 text.[!pos];
-    incr pos
-  done;
-  !acc
-
 let stmt_op text pos =
   match String.sub text !pos 2 with
   | ":=" -> DefaultAssign
@@ -156,16 +163,7 @@ let stmt_op text pos =
   | _ ->
       failwith
         ("Parser Error: on position " ^ (!pos |> string_of_int)
-       ^ " couldn't find asign operator.")
-
-let variable text pos =
-  skip_whitespaces text pos;
-  let acc = identifier text pos in
-  if String.length acc > 0 then Variable acc
-  else
-    failwith
-      ("Parser Error: on position " ^ (!pos |> string_of_int)
-     ^ " couldn't find variable.")
+       ^ " couldn't find asign operator. Find " ^ String.sub text !pos 2 ^ ".")
 
 let rec stmt_to_string text pos = function
   | Empty -> ""
@@ -179,19 +177,22 @@ let rec stmt_to_string text pos = function
         | DefaultAssign -> ":="
       in
       "<var: " ^ e1 ^ "> " ^ op_str ^ " " ^ expr_to_string text pos e2 ^ ";"
-  | While (e1, st) ->
+  | While (e1, stmts) ->
       "while " ^ expr_to_string text pos e1 ^ " do\n"
-      ^ stmt_to_string text pos st ^ "\ndone"
+      ^ stmts_to_string text pos stmts
+      ^ "\ndone"
   | If (e1, st) ->
       "if " ^ expr_to_string text pos e1 ^ " then\n"
       ^ stmt_to_string text pos st ^ "\nendif"
 
-let asign_stmt text pos =
+and stmts_to_string text pos stmts =
+  let str_lst = List.map (fun stmt -> stmt_to_string text pos stmt) stmts in
+  String.concat "\n" (List.rev str_lst)
+
+let asign_stmt ident text pos =
   skip_whitespaces text pos;
   if !pos >= String.length text then Empty
   else
-    let ident = identifier text pos in
-    skip_whitespaces text pos;
     let operation = stmt_op text pos in
     pos := !pos + 2;
     let asign = Assign (ident, operation, parse_expr text pos) in
@@ -223,7 +224,15 @@ let check_do text pos =
       ("Parser Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find do.")
 
-let while_loop_statement text pos =
+let check_done text pos =
+  if !pos + 4 < String.length text then (
+    skip_whitespaces text pos;
+    match String.sub text !pos 4 with "done" -> false | _ -> true)
+  else false
+
+let global_end text pos = !pos < String.length text
+
+let rec while_loop_statement text pos =
   skip_whitespaces text pos;
   if !pos > String.length text then
     failwith
@@ -232,7 +241,7 @@ let while_loop_statement text pos =
   else
     let expression = parse_expr text pos in
     if check_do text pos then
-      let loop = While (expression, asign_stmt text pos) in
+      let loop = While (expression, statements text pos check_done) in
       if !pos < String.length text then (
         skip_whitespaces text pos;
         match String.sub text !pos 4 with
@@ -276,3 +285,19 @@ let check_then text pos =
      if check_then text pos then
 
      else *)
+and statements text pos check =
+  let all = ref [] in
+  while check text pos do
+    skip_whitespaces text pos;
+    let ident = identifier text pos in
+    match ident with
+    | "while" ->
+        let result = while_loop_statement text pos in
+        all := result :: !all
+    | _ ->
+        let result = asign_stmt ident text pos in
+        all := result :: !all
+  done;
+  !all
+
+let global_statements text pos = statements text pos global_end
