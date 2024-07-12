@@ -246,16 +246,13 @@ let check_then text pos =
       ("Parser Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find then.")
 
-let check_endif text pos =
+let check_break_condition text pos =
   if !pos + 5 < String.length text then (
     skip_whitespaces text pos;
-    match String.sub text !pos 5 with "endif" -> false | _ -> true)
-  else false
-
-let check_else text pos =
-  if !pos + 4 < String.length text then (
-    skip_whitespaces text pos;
-    match String.sub text !pos 4 with "else" -> false | _ -> true)
+    match String.sub text !pos 5 with
+    | "else " -> false
+    | "endif" -> false
+    | _ -> true)
   else false
 
 let global_end text pos = !pos < String.length text
@@ -298,7 +295,7 @@ and if_statement text pos =
     let expression = parse_expr text pos in
     if check_then text pos then (
       skip_whitespaces text pos;
-      let if_fork = statements text pos check_else in
+      let if_fork = statements text pos check_break_condition in
       if !pos + 4 < String.length text then (
         skip_whitespaces text pos;
 
@@ -308,7 +305,7 @@ and if_statement text pos =
             If (expression, if_fork, [ Empty ])
         | "else " ->
             pos := !pos + 5;
-            If (expression, if_fork, statements text pos check_endif)
+            If (expression, if_fork, statements text pos check_break_condition)
         | _ ->
             failwith
               ("Parser Error: on position " ^ (!pos |> string_of_int)
