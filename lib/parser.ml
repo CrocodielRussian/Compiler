@@ -148,8 +148,8 @@ type asign_oper =
 type statement =
   | Assign of string * asign_oper * expr
   | Empty
-  | While of expr * statement
-  | If of expr * statement
+  | While of expr * statement list
+  | If of expr * statement list * statement list
 
 type program = Program of statement list
 
@@ -181,9 +181,12 @@ let rec stmt_to_string text pos = function
       "while " ^ expr_to_string text pos e1 ^ " do\n"
       ^ stmts_to_string text pos stmts
       ^ "\ndone"
-  | If (e1, st) ->
-      "if " ^ expr_to_string text pos e1 ^ " then\n"
-      ^ stmt_to_string text pos st ^ "\nendif"
+  | If (e1, if_stmts, else_stmts) ->
+      "If " ^ expr_to_string text pos e1 ^ " then\n"
+      ^ stmts_to_string text pos if_stmts
+      ^ "\nelse\n"
+      ^ stmts_to_string text pos else_stmts
+      ^ "\nendif\n"
 
 and stmts_to_string text pos stmts =
   let str_lst = List.map (fun stmt -> stmt_to_string text pos stmt) stmts in
@@ -230,6 +233,31 @@ let check_done text pos =
     match String.sub text !pos 4 with "done" -> false | _ -> true)
   else false
 
+let check_then text pos =
+  skip_whitespaces text pos;
+  if !pos + 4 < String.length text then
+    match String.sub text !pos 4 with
+    | "then" ->
+        pos := !pos + 4;
+        true
+    | _ -> false
+  else
+    failwith
+      ("Parser Error: on position " ^ (!pos |> string_of_int)
+     ^ " couldn't find then.")
+
+let check_endif text pos =
+  if !pos + 5 < String.length text then (
+    skip_whitespaces text pos;
+    match String.sub text !pos 5 with "endif" -> false | _ -> true)
+  else false
+
+let check_else text pos =
+  if !pos + 4 < String.length text then (
+    skip_whitespaces text pos;
+    match String.sub text !pos 4 with "else" -> false | _ -> true)
+  else false
+
 let global_end text pos = !pos < String.length text
 
 let rec while_loop_statement text pos =
@@ -261,30 +289,40 @@ let rec while_loop_statement text pos =
         ("Parser Error: on position " ^ (!pos |> string_of_int)
        ^ " couldn't find do.")
 
-let check_then text pos =
-  skip_whitespaces text pos;
-  if !pos + 4 < String.length text then
-    match String.sub text !pos 4 with
-    | "then" ->
-        pos := !pos + 4;
-        true
-    | _ -> false
-  else
+and if_statement text pos =
+  if !pos > String.length text then
     failwith
       ("Parser Error: on position " ^ (!pos |> string_of_int)
-     ^ " couldn't find then.")
+     ^ " couldn't find bool expression in if.")
+  else
+    let expression = parse_expr text pos in
+    if check_then text pos then (
+      skip_whitespaces text pos;
+      let if_fork = statements text pos check_else in
+      if !pos + 4 < String.length text then (
+        skip_whitespaces text pos;
 
-(* let if_statement text pos =
-   skip_whitespaces text pos =
-   if !pos > String.length text then
-     failwith
-       ("Parser Error: on position " ^ (!pos |> string_of_int)
-      ^ " couldn't find bool expression in if.")
-   else
-     let expression = parse_expr text pos in
-     if check_then text pos then
+        match String.sub text !pos 5 with
+        | "endif" ->
+            pos := !pos + 5;
+            If (expression, if_fork, [ Empty ])
+        | "else " ->
+            pos := !pos + 5;
+            If (expression, if_fork, statements text pos check_endif)
+        | _ ->
+            failwith
+              ("Parser Error: on position " ^ (!pos |> string_of_int)
+             ^ " couldn't find asign statement."))
+      else (
+        print_int (String.length text);
+        failwith
+          ("Parser Error: on position " ^ (!pos |> string_of_int)
+         ^ " couldn't find else.")))
+    else
+      failwith
+        ("Parser Error: on position " ^ (!pos |> string_of_int)
+       ^ " couldn't find then.")
 
-     else *)
 and statements text pos check =
   let all = ref [] in
   while check text pos do
@@ -293,6 +331,9 @@ and statements text pos check =
     match ident with
     | "while" ->
         let result = while_loop_statement text pos in
+        all := result :: !all
+    | "if" ->
+        let result = if_statement text pos in
         all := result :: !all
     | _ ->
         let result = asign_stmt ident text pos in
