@@ -1,5 +1,3 @@
-open Option
-
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
 let is_whitespace = function ' ' -> true | _ -> false
@@ -136,6 +134,7 @@ type statement =
   | Assign of string * asign_oper * expr
   | Empty
   | While of expr * statement
+  | If of expr * statement
 
 type program = Program of statement list
 
@@ -181,8 +180,11 @@ let rec stmt_to_string text pos = function
       in
       "<var: " ^ e1 ^ "> " ^ op_str ^ " " ^ expr_to_string text pos e2 ^ ";"
   | While (e1, st) ->
-      "<while> " ^ expr_to_string text pos e1 ^ " do\n"
+      "while " ^ expr_to_string text pos e1 ^ " do\n"
       ^ stmt_to_string text pos st ^ "\ndone"
+  | If (e1, st) ->
+      "if " ^ expr_to_string text pos e1 ^ " then\n"
+      ^ stmt_to_string text pos st ^ "\nendif"
 
 let asign_stmt text pos =
   skip_whitespaces text pos;
@@ -226,7 +228,7 @@ let while_loop_statement text pos =
   if !pos > String.length text then
     failwith
       ("Parser Error: on position " ^ (!pos |> string_of_int)
-     ^ " couldn't find bool expression in while';'.")
+     ^ " couldn't find bool expression in while.")
   else
     let expression = parse_expr text pos in
     if check_do text pos then
@@ -249,3 +251,28 @@ let while_loop_statement text pos =
       failwith
         ("Parser Error: on position " ^ (!pos |> string_of_int)
        ^ " couldn't find do.")
+
+let check_then text pos =
+  skip_whitespaces text pos;
+  if !pos + 4 < String.length text then
+    match String.sub text !pos 4 with
+    | "then" ->
+        pos := !pos + 4;
+        true
+    | _ -> false
+  else
+    failwith
+      ("Parser Error: on position " ^ (!pos |> string_of_int)
+     ^ " couldn't find then.")
+
+(* let if_statement text pos =
+   skip_whitespaces text pos =
+   if !pos > String.length text then
+     failwith
+       ("Parser Error: on position " ^ (!pos |> string_of_int)
+      ^ " couldn't find bool expression in if.")
+   else
+     let expression = parse_expr text pos in
+     if check_then text pos then
+
+     else *)
