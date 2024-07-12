@@ -1,7 +1,5 @@
 open Option
 
-exception Foo of string
-
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
 let is_whitespace = function ' ' -> true | _ -> false
@@ -18,6 +16,7 @@ let skip_whitespaces text pos =
 type oper = Plus | Multiply | Divide | Minus | Invalid
 
 type expr =
+  | Variable of string
   | Number of int
   | Unary of oper * expr
   | Binary of expr * oper * expr
@@ -95,6 +94,7 @@ and simplest_expr text pos =
          ^ " unexpected symbol.")
 
 let rec expr_to_string text pos = function
+  | Variable n -> "<var: " ^ n ^ ">"
   | Number n -> string_of_int n
   | Unary (op, e) ->
       let op_str =
@@ -123,3 +123,79 @@ let rec expr_to_string text pos = function
       in
       "(" ^ expr_to_string text pos e1 ^ " " ^ op_str ^ " "
       ^ expr_to_string text pos e2 ^ ")"
+
+(* Assotiate with: := | += | *= | /= | -= | Invalid *)
+type asign_oper =
+  | DefaultAssign
+  | PlusAssign
+  | MultiplyAssign
+  | DivideAssign
+  | MinusAssign
+
+type statement = Assign of string * asign_oper * expr | Empty
+type program = Program of statement list
+
+let identifier text pos =
+  let acc = ref "" in
+  while !pos < String.length text && is_alpha text.[!pos] do
+    acc := !acc ^ String.make 1 text.[!pos];
+    incr pos
+  done;
+  !acc
+
+let stmt_op text pos =
+  match String.sub text !pos 2 with
+  | ":=" -> DefaultAssign
+  | "+=" -> PlusAssign
+  | "-=" -> MinusAssign
+  | "*=" -> MultiplyAssign
+  | "/=" -> DivideAssign
+  | _ ->
+      failwith
+        ("Parser Error: on position " ^ (!pos |> string_of_int)
+       ^ " couldn't find asign operator.")
+
+let variable text pos =
+  skip_whitespaces text pos;
+  let acc = identifier text pos in
+  if String.length acc > 0 then Variable acc
+  else
+    failwith
+      ("Parser Error: on position " ^ (!pos |> string_of_int)
+     ^ " couldn't find variable.")
+
+let stmt_to_string text pos = function
+  | Empty -> ""
+  | Assign (e1, op, e2) ->
+      let op_str =
+        match op with
+        | PlusAssign -> "+="
+        | MinusAssign -> "-="
+        | MultiplyAssign -> "*="
+        | DivideAssign -> "/="
+        | DefaultAssign -> ":="
+      in
+      "<var: " ^ e1 ^ "> " ^ op_str ^ " " ^ expr_to_string text pos e2 ^ ";"
+
+let stmt text pos =
+  skip_whitespaces text pos;
+  if !pos >= String.length text then Empty
+  else
+    let ident = identifier text pos in
+    skip_whitespaces text pos;
+    let operation = stmt_op text pos in
+    pos := !pos + 2;
+    let asign = Assign (ident, operation, parse_expr text pos) in
+    stmt_to_string text pos asign |> prerr_endline;
+    skip_whitespaces text pos;
+    if !pos < String.length text then
+      match text.[!pos] with
+      | ';' -> asign
+      | _ ->
+          failwith
+            ("Parser Error: on position " ^ (!pos |> string_of_int)
+           ^ " couldn't find asign statement.")
+    else
+      failwith
+        ("Parser Error: on position " ^ (!pos |> string_of_int)
+       ^ " couldn't find close symbol of statement: ';'.")
