@@ -208,7 +208,7 @@ let asign_stmt ident text pos =
       | _ ->
           failwith
             ("Parser Error: on position " ^ (!pos |> string_of_int)
-           ^ " couldn't find asign statement.")
+           ^ " couldn't find asign statement for " ^ ident ^ ".")
     else
       failwith
         ("Parser Error: on position " ^ (!pos |> string_of_int)
@@ -228,9 +228,9 @@ let check_do text pos =
      ^ " couldn't find do.")
 
 let check_done text pos =
-  if !pos + 4 < String.length text then (
-    skip_whitespaces text pos;
-    match String.sub text !pos 4 with "done" -> false | _ -> true)
+  skip_whitespaces text pos;
+  if !pos + 4 < String.length text then
+    match String.sub text !pos 4 with "done" -> false | _ -> true
   else false
 
 let check_then text pos =
@@ -247,12 +247,12 @@ let check_then text pos =
      ^ " couldn't find then.")
 
 let check_break_condition text pos =
-  if !pos + 5 < String.length text then (
-    skip_whitespaces text pos;
+  skip_whitespaces text pos;
+  if !pos + 5 < String.length text then
     match String.sub text !pos 5 with
-    | "else " -> false
+    | "else " | "else\t" | "else\n" | "else\r" -> false
     | "endif" -> false
-    | _ -> true)
+    | _ -> true
   else false
 
 let global_end text pos = !pos < String.length text
@@ -265,10 +265,10 @@ let rec while_loop_statement text pos =
      ^ " couldn't find bool expression in while.")
   else
     let expression = parse_expr text pos in
-    if check_do text pos then
+    if check_do text pos then (
       let loop = While (expression, statements text pos check_done) in
-      if !pos < String.length text then (
-        skip_whitespaces text pos;
+      skip_whitespaces text pos;
+      if !pos + 4 <= String.length text then
         match String.sub text !pos 4 with
         | "done" ->
             pos := !pos + 4;
@@ -276,11 +276,11 @@ let rec while_loop_statement text pos =
         | _ ->
             failwith
               ("Parser Error: on position " ^ (!pos |> string_of_int)
-             ^ " couldn't find asign statement."))
+             ^ " couldn't find asign statement.")
       else
         failwith
           ("Parser Error: on position " ^ (!pos |> string_of_int)
-         ^ " couldn't find done.")
+         ^ " couldn't find done."))
     else
       failwith
         ("Parser Error: on position " ^ (!pos |> string_of_int)
@@ -296,20 +296,19 @@ and if_statement text pos =
     if check_then text pos then (
       skip_whitespaces text pos;
       let if_fork = statements text pos check_break_condition in
-      if !pos + 4 < String.length text then (
-        skip_whitespaces text pos;
-
+      skip_whitespaces text pos;
+      if !pos + 5 <= String.length text then
         match String.sub text !pos 5 with
         | "endif" ->
             pos := !pos + 5;
             If (expression, if_fork, [ Empty ])
-        | "else " ->
+        | "else " | "else\t" | "else\n" | "else\r" ->
             pos := !pos + 5;
             If (expression, if_fork, statements text pos check_break_condition)
         | _ ->
             failwith
               ("Parser Error: on position " ^ (!pos |> string_of_int)
-             ^ " couldn't find asign statement."))
+             ^ " couldn't find asign statement.")
       else (
         print_int (String.length text);
         failwith
