@@ -122,11 +122,11 @@ let test_if_expression_with_else_and_several_statements text () =
     "If <var: n> then\n\
      <var: a> := 1230;\n\
      <var: b> := 20;\n\
-     <var: c> := 10; \n\
+     <var: c> := 10;\n\
      else\n\
      <var: a> := 20;\n\
      <var: b> := 10;\n\
-     <var: c> := 20; \n\
+     <var: c> := 20;\n\
      endif\n"
   in
   check string "same string" greeting expected

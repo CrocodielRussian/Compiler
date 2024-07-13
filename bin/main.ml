@@ -1,7 +1,5 @@
 module Main = struct
-  let text =
-    "if n then a:= 1230; b:=20; c:= 10; else a:= 20; b:= 10; c:= 20; endif"
-
+  let text = "while a do a:=0; done"
   let pos = ref 0
   let res = Compiler.Parser.global_statements text pos
   let () = Compiler.Parser.stmts_to_string text pos res |> print_endline
