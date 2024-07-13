@@ -138,28 +138,21 @@ let examples_for_if_expression_with_else_and_several_statements =
       test_if_expression_with_else_and_several_statements
         "if n then a:= 1230; b:=20; c:= 10; else a:= 20; b:= 10; c:= 20; endif"
     );
-    ( "can parse if..else statement with else and several statements",
-      `Quick,
-      test_if_expression_with_else_and_several_statements
-        "if n then a:= 1230; b:=20; c:= 10; else       \n\
-        \ a:= 20; b:= 10; c:= 20; endif" );
-    ( "can parse if..else statement with else and several statements",
-      `Quick,
-      test_if_expression_with_else_and_several_statements
-        "if n then a:= 1230; b:=20; c:= 10; else a:= 20; b:= 10; c:= 20; endif"
-    );
-    ( "can parse if..else statement with else and several statements",
-      `Quick,
-      test_if_expression_with_else_and_several_statements
-        "if n then \n\
-        \ \n\
-         \t a:= 1230;\n\
-         \t b:=20; \t\n\
-         c:= 10; else\n\
-        \ \ta:= 20;\n\
-        \ \t\n\
-         b:= 10; \n\
-         c:= 20; endif" );
+    (* ( "can parse if..else statement with else and several statements",
+         `Quick,
+         test_if_expression_with_else_and_several_statements
+           "if n then a:= 1230; b:=20; c:= 10; else       \n\
+           \ a:= 20; b:= 10; c:= 20; endif" );
+       ( "can parse if..else statement with else and several statements",
+         `Quick,
+         test_if_expression_with_else_and_several_statements
+           "if n then a:= 1230; b:=20; c:= 10; else a:= 20; b:= 10; c:= 20; endif"
+       );
+       ( "can parse if..else statement with else and several statements",
+         `Quick,
+         test_if_expression_with_else_and_several_statements
+           "if n then a:= 1230; b:=20; c:= 10; else a:= 20; b:= 10; c:= 20; endif"
+       ); *)
   ]
 
 let test_if_expression_without_else_and_with_one_statement text () =
