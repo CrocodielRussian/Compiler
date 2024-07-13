@@ -1,4 +1,6 @@
 (executable
  (public_name compiler)
  (name main)
- (libraries compiler))
+ (libraries compiler)
+ (preprocess
+  (pps ppx_deriving.show ppx_deriving.ord)))

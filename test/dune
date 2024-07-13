@@ -1,2 +1,6 @@
 (test
- (name test_compiler))
+ (name test_compiler)
+ (modules test_compiler)
+ (libraries alcotest compiler)
+ (action
+  (run %{test} -e)))

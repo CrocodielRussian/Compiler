@@ -186,7 +186,7 @@ let rec stmt_to_string text pos = function
       ^ stmts_to_string text pos if_stmts
       ^ "\nelse\n"
       ^ stmts_to_string text pos else_stmts
-      ^ "\nendif\n"
+      ^ "\nendif"
 
 and stmts_to_string text pos stmts =
   let str_lst = List.map (fun stmt -> stmt_to_string text pos stmt) stmts in
