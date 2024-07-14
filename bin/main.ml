@@ -1,9 +1,6 @@
 module Main = struct
-  let text =
-    "while a + b * c >= 0 do a:=(a + b * c) != 12; b:=13 + 65 * a < 12; c:= a \
-     < b; done"
-
+  let text = "var a := 10; a + b;10 + a * b; a:=5;"
   let pos = ref 0
-  let res = Compiler.Parser.global_statements text pos
-  let () = Compiler.Parser.stmts_to_string text pos res |> print_endline
+  let res = Compiler.Parser.parse_program text pos
+  let () = Compiler.Parser.string_of_statements text pos res |> print_endline
 end
