@@ -8,13 +8,52 @@ let skip_whitespaces text pos =
     incr pos
   done
 
-type oper = Plus | Multiply | Divide | Minus | Invalid
+type oper =
+  | Plus
+  | Multiply
+  | Divide
+  | Minus
+  | Low
+  | More
+  | LowOrEqual
+  | MoreOrEqual
+  | Equal
+  | Unequal
+  | Invalid
 
 type expr =
   | Variable of string
   | Number of int
   | Unary of oper * expr
   | Binary of expr * oper * expr
+
+let unary_op_to_string = function
+  | Plus -> "+"
+  | Minus -> "-"
+  | Invalid -> failwith "AST Error: unexpected operator."
+  | _ -> failwith "AST Error: unexpected unary operator."
+
+let bin_op_to_string = function
+  | Plus -> "+"
+  | Minus -> "-"
+  | Multiply -> "*"
+  | Divide -> "/"
+  | Low -> "<"
+  | LowOrEqual -> "<="
+  | More -> ">"
+  | MoreOrEqual -> ">="
+  | Equal -> "=="
+  | Unequal -> "!="
+  | Invalid -> failwith "AST Error: unexpected unary operator."
+
+let rec expr_to_string text pos = function
+  | Variable n -> "<var: " ^ n ^ ">"
+  | Number n -> string_of_int n
+  | Unary (op, e) ->
+      unary_op_to_string op ^ "(" ^ expr_to_string text pos e ^ ")"
+  | Binary (e1, op, e2) ->
+      "(" ^ expr_to_string text pos e1 ^ " " ^ bin_op_to_string op ^ " "
+      ^ expr_to_string text pos e2 ^ ")"
 
 let positive_number text pos =
   skip_whitespaces text pos;
@@ -50,7 +89,56 @@ let variable text pos =
 let op_add = function '+' -> Plus | '-' -> Minus | _ -> Invalid
 let op_mult = function '*' -> Multiply | '/' -> Divide | _ -> Invalid
 
-let rec parse_expr_mul text pos =
+let op_compare text pos =
+  skip_whitespaces text pos;
+  let len = String.length text in
+  let check_substring sub =
+    let sub_len = String.length sub in
+    !pos + sub_len <= len && String.sub text !pos sub_len = sub
+  in
+  let eval_op_compare = function
+    | ">=" -> MoreOrEqual
+    | "<=" -> LowOrEqual
+    | "==" -> Equal
+    | "!=" -> Unequal
+    | ">" -> More
+    | "<" -> Low
+    | _ -> Invalid
+  in
+  if
+    check_substring ">=" || check_substring "<=" || check_substring "=="
+    || check_substring "!="
+  then (
+    pos := !pos + 2;
+    eval_op_compare (String.sub text (!pos - 2) 2))
+  else if check_substring ">" || check_substring "<" then (
+    incr pos;
+    eval_op_compare (String.sub text (!pos - 1) 1))
+  else Invalid
+
+let rec parse_expr text pos =
+  skip_whitespaces text pos;
+  let head = parse_math_expr text pos in
+  skip_whitespaces text pos;
+  if !pos >= String.length text then head
+  else
+    let operation = op_compare text pos in
+    if operation != Invalid then Binary (head, operation, parse_expr text pos)
+    else head
+
+and parse_math_expr text pos =
+  skip_whitespaces text pos;
+  let head = parse_expr_mul text pos in
+  skip_whitespaces text pos;
+  if !pos >= String.length text then head
+  else
+    let operation = op_add text.[!pos] in
+    if operation != Invalid then (
+      incr pos;
+      Binary (head, operation, parse_math_expr text pos))
+    else head
+
+and parse_expr_mul text pos =
   skip_whitespaces text pos;
   let head = simplest_expr text pos in
   skip_whitespaces text pos;
@@ -60,18 +148,6 @@ let rec parse_expr_mul text pos =
     if operation != Invalid then (
       incr pos;
       Binary (head, operation, parse_expr_mul text pos))
-    else head
-
-and parse_expr text pos =
-  skip_whitespaces text pos;
-  let head = parse_expr_mul text pos in
-  skip_whitespaces text pos;
-  if !pos >= String.length text then head
-  else
-    let operation = op_add text.[!pos] in
-    if operation != Invalid then (
-      incr pos;
-      Binary (head, operation, parse_expr text pos))
     else head
 
 and simplest_expr text pos =
@@ -106,37 +182,6 @@ and simplest_expr text pos =
           ("Parse Error: on position " ^ (!pos |> string_of_int)
          ^ " unexpected symbol.")
 
-let rec expr_to_string text pos = function
-  | Variable n -> "<var: " ^ n ^ ">"
-  | Number n -> string_of_int n
-  | Unary (op, e) ->
-      let op_str =
-        match op with
-        | Plus -> "+"
-        | Minus -> "-"
-        | Multiply -> "*"
-        | Divide -> "/"
-        | Invalid ->
-            failwith
-              ("Parse Error: on position " ^ (!pos |> string_of_int)
-             ^ " unexpected operator.")
-      in
-      op_str ^ "(" ^ expr_to_string text pos e ^ ")"
-  | Binary (e1, op, e2) ->
-      let op_str =
-        match op with
-        | Plus -> "+"
-        | Minus -> "-"
-        | Multiply -> "*"
-        | Divide -> "/"
-        | Invalid ->
-            failwith
-              ("Parse Error: on position " ^ (!pos |> string_of_int)
-             ^ " unexpected operator.")
-      in
-      "(" ^ expr_to_string text pos e1 ^ " " ^ op_str ^ " "
-      ^ expr_to_string text pos e2 ^ ")"
-
 (* Assotiate with: := | += | *= | /= | -= | Invalid *)
 type asign_oper =
   | DefaultAssign
@@ -150,8 +195,6 @@ type statement =
   | Empty
   | While of expr * statement list
   | If of expr * statement list * statement list
-
-type program = Program of statement list
 
 let stmt_op text pos =
   match String.sub text !pos 2 with
