@@ -225,7 +225,7 @@ let rec stmt_to_string text pos = function
       ^ stmts_to_string text pos stmts
       ^ "\ndone"
   | If (e1, if_stmts, else_stmts) ->
-      "If " ^ expr_to_string text pos e1 ^ " then\n"
+      "if " ^ expr_to_string text pos e1 ^ " then\n"
       ^ stmts_to_string text pos if_stmts
       ^ "\nelse\n"
       ^ stmts_to_string text pos else_stmts

@@ -87,7 +87,7 @@ let test_if_statement_with_else_and_one_statement text () =
   in
   prerr_endline greeting;
   let expected =
-    "If <var: n> then\n<var: a> := 1230;\nelse\n<var: a> := 20;\nendif\n"
+    "if <var: n> then\n<var: a> := 1230;\nelse\n<var: a> := 20;\nendif\n"
   in
   check string "same string" greeting expected
 
@@ -119,7 +119,7 @@ let test_if_statement_with_else_and_several_statements text () =
   in
   prerr_endline greeting;
   let expected =
-    "If <var: n> then\n\
+    "if <var: n> then\n\
      <var: a> := 1230;\n\
      <var: b> := 20;\n\
      <var: c> := 10;\n\
@@ -162,7 +162,7 @@ let test_if_statement_without_else_and_with_one_statement text () =
     |> Compiler.Parser.stmts_to_string text pos
   in
   prerr_endline greeting;
-  let expected = "If <var: n> then\n<var: a> := 1230;\nelse\n\nendif" in
+  let expected = "if <var: n> then\n<var: a> := 1230;\nelse\n\nendif" in
   check string "same string" greeting expected
 
 let examples_for_if_statement_without_else_and_with_one_statement =
@@ -223,11 +223,11 @@ let () =
       ("One expression", examples_for_parse_one_expression);
       ("Two expressions", examples_for_parse_two_expression);
       ("Several expressions", examples_for_parse_several_expression);
-      ( "If..else statement with else and one statement",
+      ( "if..else statement with else and one statement",
         examples_for_if_statement_with_else_and_one_statement );
-      ( "If..else statement with else and several statements",
+      ( "if..else statement with else and several statements",
         examples_for_if_statement_with_else_and_several_statements );
-      ( "If..else statement without else and with one statement",
+      ( "if..else statement without else and with one statement",
         examples_for_if_statement_without_else_and_with_one_statement );
       ( "while loop statement with several statements",
         examples_for_while_loop_statement_with_several_statements );
