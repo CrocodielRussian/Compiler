@@ -75,10 +75,11 @@ let rec string_of_expression text pos = function
       ^ string_of_expression text pos e2
       ^ ")"
   | AssignExpression (v, op, e) ->
-      v ^ " "
+      "(" ^ v ^ " "
       ^ string_of_assign_operator op
       ^ " "
       ^ string_of_expression text pos e
+      ^ ")"
 
 let rec string_of_statements text pos stmts =
   let str_lst =
