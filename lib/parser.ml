@@ -99,13 +99,20 @@ and string_of_statement text pos = function
       ^ string_of_statements text pos stmts
       ^ "\ndone"
   | If (e1, if_stmts, else_stmts) ->
-      "if "
-      ^ string_of_expression text pos e1
-      ^ " then\n"
-      ^ string_of_statements text pos if_stmts
-      ^ "\nelse\n"
-      ^ string_of_statements text pos else_stmts
-      ^ "\nendif"
+      if else_stmts = [ Empty ] then
+        "if "
+        ^ string_of_expression text pos e1
+        ^ " then\n"
+        ^ string_of_statements text pos if_stmts
+        ^ "\nendif"
+      else
+        "if "
+        ^ string_of_expression text pos e1
+        ^ " then\n"
+        ^ string_of_statements text pos if_stmts
+        ^ "\nelse\n"
+        ^ string_of_statements text pos else_stmts
+        ^ "\nendif"
 
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
