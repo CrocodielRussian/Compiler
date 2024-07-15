@@ -299,7 +299,7 @@ let parse_expr_statement text pos =
   if check_exists_simple_stmt_close text pos then Expression result
   else
     failwith
-      ("Parser Error: on position " ^ (!pos |> string_of_int)
+      ("ParserMYNAME Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find close symbol of expression statement: ';'.")
 
 let assert_assign_statement_op text pos =
@@ -439,6 +439,7 @@ and parse_statements text pos check =
   while check text pos do
     skip_whitespaces text pos;
     let ident = identifier text pos in
+    print_endline ident;
     match ident with
     | "while" ->
         let result = parse_while_loop_statement text pos in

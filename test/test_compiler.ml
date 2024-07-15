@@ -153,38 +153,44 @@ let string_of_ast_cases =
 
 let build_statement text =
   let pos = ref 0 in
-  parse_expr_statement text pos
+  parse_statements text pos check_program_end
 
 let string_parse_cases =
   [
     ( "Expression statement: '10;'",
       `Quick,
-      test_string_of_ast (build_statement "10;") "10;" (fun ast ->
-          string_of_statement "" 0 ast) );
+      let text = "10;" in
+      let build = build_statement text in
+      test_string_of_ast build "10;" (fun ast ->
+          string_of_statements text 0 ast) );
     ( "Math statement: '10 + a / (34 * -23 - 90);'",
       `Quick,
-      test_string_of_ast (build_statement "10 + a / (34 * -23 - 90);")
-        "(10 + (a / ((34 * -(23)) - 90)));" (fun ast ->
-          string_of_statement "" 0 ast) );
+      let text = "10 + a / (34 * -23 - 90);" in
+      let build = build_statement text in
+      test_string_of_ast build "(10 + (a / ((34 * -(23)) - 90)));" (fun ast ->
+          string_of_statements text 0 ast) );
     ( "Compare statement: '10 != a <= (34 * 23 > -90);'",
       `Quick,
-      test_string_of_ast (build_statement "10 != a <= (34 * 23 > -90);")
-        "(10 != (a <= ((34 * 23) > -(90))));" (fun ast ->
-          string_of_statement "" 0 ast) );
+      let text = "10 != a <= (34 * 23 > -90);" in
+      let build = build_statement text in
+      test_string_of_ast build "(10 != (a <= ((34 * 23) > -(90))));" (fun ast ->
+          string_of_statements text 0 ast) );
     ( "Assign expression statement: 'a := -(b := 5) < 90;'",
       `Quick,
-      test_string_of_ast (build_statement "a := -(b := 5) < 90;")
-        "(a := (-((b := 5)) < 90));" (fun ast -> string_of_statement "" 0 ast)
-    );
-    ( "Variable init statement: 'var a := -(b := 5) < 90;'",
+      let text = "a := -(b := 5) < 90;" in
+      let build = build_statement text in
+      test_string_of_ast build "(a := (-((b := 5)) < 90));" (fun ast ->
+          string_of_statements text 0 ast) );
+    ( "Variable init statement: 'a := -(b := 5) < 90;'",
       `Quick,
-      test_string_of_ast (build_statement "var a := -(b := 5) < 90;")
-        "var a := (-((b := 5)) < 90);" (fun ast -> string_of_statement "" 0 ast)
-    );
+      let text = "var a := -(b := 5) < 90;" in
+      let build = build_statement text in
+      test_string_of_ast build "var a := (-((b := 5)) < 90);" (fun ast ->
+          string_of_statements text 0 ast) );
   ]
 
 let () =
-  Alcotest.run "Parser tests"
+  Alcotest.run "Parser_tests"
     [
       ("String of AST tests", string_of_ast_cases);
       ("String parse tests", string_parse_cases);
