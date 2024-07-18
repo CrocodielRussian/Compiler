@@ -22,11 +22,12 @@ type assign_oper =
 
 type expr =
   | Variable of string
-  | Number of int
-  | Unary of oper * expr
-  | Binary of expr * oper * expr
+  | Number of int (* 12 *)
+  | Unary of oper * expr (* -12 *)
+  | Binary of expr * oper * expr (* 14  + 12 *)
   | AssignExpression of string * assign_oper * expr
-[@@derive show]
+(* a := 12*)
+(* [@@derive show] *)
 
 type statement =
   | Expression of expr
@@ -34,7 +35,7 @@ type statement =
   | Empty
   | While of expr * statement list
   | If of expr * statement list * statement list
-[@@derive show]
+(* [@@derive show] *)
 
 let string_of_unary_operator = function
   | Plus -> "+"
