@@ -85,7 +85,7 @@ let rec string_of_statements text pos stmts =
   let str_lst =
     List.map (fun stmt -> string_of_statement text pos stmt) stmts
   in
-  String.concat "\n" (List.rev str_lst)
+  String.concat "\n" str_lst
 
 and string_of_statement text pos = function
   | Empty -> ""
