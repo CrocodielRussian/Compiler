@@ -26,6 +26,7 @@ type expr =
   | Unary of oper * expr
   | Binary of expr * oper * expr
   | AssignExpression of string * assign_oper * expr
+[@@derive show]
 
 type statement =
   | Expression of expr
@@ -33,6 +34,7 @@ type statement =
   | Empty
   | While of expr * statement list
   | If of expr * statement list * statement list
+[@@derive show]
 
 let string_of_unary_operator = function
   | Plus -> "+"
