@@ -446,21 +446,20 @@ and parse_statements text pos check =
   while check text pos do
     skip_whitespaces text pos;
     let ident = identifier text pos in
-    print_endline ident;
     match ident with
     | "while" ->
         let result = parse_while_loop_statement text pos in
-        all := result :: !all
+        all := !all @ [ result ]
     | "if" ->
         let result = parse_if_statement text pos in
-        all := result :: !all
+        all := !all @ [ result ]
     | "var" ->
         let result = parser_assign_statement text pos in
-        all := result :: !all
+        all := !all @ [ result ]
     | _ ->
         pos := !pos - String.length ident;
         let result = parse_expr_statement text pos in
-        all := result :: !all
+        all := !all @ [ result ]
   done;
   !all
 
