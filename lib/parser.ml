@@ -241,7 +241,8 @@ and parse_math_expr text pos =
   if !pos >= String.length text then head
   else
     let operation = parse_added_operation text.[!pos] in
-    if operation != Invalid then (
+    if !pos + 1 < String.length text && text.[!pos + 1] = '=' then head
+    else if operation != Invalid then (
       incr pos;
       Binary (head, operation, parse_math_expr text pos))
     else head
@@ -253,7 +254,8 @@ and parse_mult_expr text pos =
   if !pos >= String.length text then head
   else
     let operation = parse_mult_operation text.[!pos] in
-    if operation != Invalid then (
+    if !pos + 1 < String.length text && text.[!pos + 1] = '=' then head
+    else if operation != Invalid then (
       incr pos;
       Binary (head, operation, parse_mult_expr text pos))
     else head
@@ -288,7 +290,9 @@ and parse_simplest_expr text pos =
     | _ ->
         failwith
           ("Parse Error: on position " ^ (!pos |> string_of_int)
-         ^ " unexpected symbol.")
+         ^ " unexpected symbol: '"
+          ^ Char.escaped text.[!pos]
+          ^ "'.")
 
 let check_exists_simple_stmt_close text pos =
   skip_whitespaces text pos;
