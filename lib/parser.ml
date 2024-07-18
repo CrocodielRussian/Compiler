@@ -1,3 +1,5 @@
+module StringSet = Set.Make (String)
+
 type oper =
   | Plus
   | Multiply
@@ -85,7 +87,7 @@ let rec string_of_statements text pos stmts =
   let str_lst =
     List.map (fun stmt -> string_of_statement text pos stmt) stmts
   in
-  String.concat "\n" (List.rev str_lst)
+  String.concat "\n" str_lst
 
 and string_of_statement text pos = function
   | Empty -> ""
@@ -114,6 +116,7 @@ and string_of_statement text pos = function
         ^ string_of_statements text pos else_stmts
         ^ "\nendif"
 
+let initialised_variables = ref (StringSet.of_list [])
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
 let is_whitespace = function ' ' | '\r' | '\t' | '\n' -> true | _ -> false
@@ -232,7 +235,12 @@ and parse_assign_expr name text pos =
   skip_whitespaces text pos;
   let operation = parse_assgn_operation text pos in
   if operation = InvalidAssing then parse_compare_expr (Variable name) text pos
-  else AssignExpression (name, operation, parse_expr text pos)
+  else if StringSet.mem name !initialised_variables then
+    AssignExpression (name, operation, parse_expr text pos)
+  else
+    failwith
+      ("LogicError: on position " ^ string_of_int !pos
+     ^ " find undound variable: '" ^ name ^ "'.")
 
 and parse_math_expr text pos =
   skip_whitespaces text pos;
@@ -327,12 +335,19 @@ let parser_assign_statement text pos =
   skip_whitespaces text pos;
   let ident = identifier text pos in
   assert_assign_statement_op text pos;
-  let assign = AssignStatement (ident, parse_expr text pos) in
-  if check_exists_simple_stmt_close text pos then assign
-  else
+  if StringSet.mem ident !initialised_variables then
     failwith
-      ("Parser Error: on position " ^ (!pos |> string_of_int)
-     ^ " couldn't find close symbol of statement: ';'.")
+      ("LogicError: on position " ^ string_of_int !pos ^ " init variable "
+     ^ ident ^ ", which exists now.")
+  else
+    let assign = AssignStatement (ident, parse_expr text pos) in
+    if check_exists_simple_stmt_close text pos then (
+      initialised_variables := StringSet.add ident !initialised_variables;
+      assign)
+    else
+      failwith
+        ("Parser Error: on position " ^ (!pos |> string_of_int)
+       ^ " couldn't find close symbol of statement: ';'.")
 
 let check_do_exists text pos =
   skip_whitespaces text pos;
@@ -468,4 +483,7 @@ and parse_statements text pos check =
   !all
 
 let check_program_end text pos = !pos < String.length text
-let parse_program text pos = parse_statements text pos check_program_end
+
+let parse_program text pos =
+  initialised_variables := StringSet.of_list [];
+  parse_statements text pos check_program_end
