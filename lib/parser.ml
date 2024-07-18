@@ -28,11 +28,12 @@ type expr =
   | Unary of oper * expr
   | Binary of expr * oper * expr
   | AssignExpression of string * assign_oper * expr
+  | EmptyExpression
 
 type statement =
   | Expression of expr
   | AssignStatement of string * expr
-  | Empty
+  | EmptyStatement
   | While of expr * statement list
   | If of expr * statement list * statement list
 
@@ -82,6 +83,7 @@ let rec string_of_expression text pos = function
       ^ " "
       ^ string_of_expression text pos e
       ^ ")"
+  | EmptyExpression -> ""
 
 let rec string_of_statements text pos stmts =
   let str_lst =
@@ -90,7 +92,7 @@ let rec string_of_statements text pos stmts =
   String.concat "\n" str_lst
 
 and string_of_statement text pos = function
-  | Empty -> ""
+  | EmptyStatement -> ""
   | Expression e -> string_of_expression text pos e ^ ";"
   | AssignStatement (v, e2) ->
       "var " ^ v ^ " := " ^ string_of_expression text pos e2 ^ ";"
@@ -101,7 +103,7 @@ and string_of_statement text pos = function
       ^ string_of_statements text pos stmts
       ^ "\ndone"
   | If (e1, if_stmts, else_stmts) ->
-      if else_stmts = [ Empty ] then
+      if else_stmts = [ EmptyStatement ] then
         "if "
         ^ string_of_expression text pos e1
         ^ " then\n"
@@ -270,10 +272,7 @@ and parse_mult_expr text pos =
 
 and parse_simplest_expr text pos =
   skip_whitespaces text pos;
-  if !pos >= String.length text then
-    failwith
-      ("Parser Error: on position " ^ (!pos |> string_of_int)
-     ^ " couldn't find expression.")
+  if !pos >= String.length text then EmptyExpression
   else
     match text.[!pos] with
     | '-' ->
@@ -312,14 +311,20 @@ let check_exists_simple_stmt_close text pos =
     | _ -> false
   else false
 
-let parse_expr_statement text pos =
-  skip_whitespaces text pos;
-  let result = parse_expr text pos in
-  if check_exists_simple_stmt_close text pos then Expression result
+let check_expr_stmt_close text pos expression =
+  if check_exists_simple_stmt_close text pos then Expression expression
   else
     failwith
       ("ParserMYNAME Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find close symbol of expression statement: ';'.")
+
+let parse_expr_statement text pos =
+  skip_whitespaces text pos;
+  let result = parse_expr text pos in
+  print_endline (string_of_expression text pos result);
+  match result with
+  | EmptyExpression -> EmptyStatement
+  | _ -> check_expr_stmt_close text pos result
 
 let assert_assign_statement_op text pos =
   skip_whitespaces text pos;
@@ -438,7 +443,7 @@ and parse_if_statement text pos =
         match String.sub text !pos 5 with
         | "endif" ->
             pos := !pos + 5;
-            If (expression, if_fork, [ Empty ])
+            If (expression, if_fork, [ EmptyStatement ])
         | "else " | "else\t" | "else\n" | "else\r" ->
             pos := !pos + 5;
             If

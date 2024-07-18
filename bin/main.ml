@@ -13,7 +13,7 @@ module Main = struct
      (b := (a + b));\n\
      (a := (b - a));\n\
      (n := (n - 1));\n\
-     done"
+     done\n"
 
   let pos = ref 0
   let res = Compiler.Parser.parse_program text pos
