@@ -310,7 +310,7 @@ let parse_expr_statement text pos =
   if check_exists_simple_stmt_close text pos then Expression result
   else
     failwith
-      ("ParserMYNAME Error: on position " ^ (!pos |> string_of_int)
+      ("Parser Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find close symbol of expression statement: ';'.")
 
 let assert_assign_statement_op text pos =

@@ -132,9 +132,9 @@ let string_of_ast_cases =
         (While
            ( Binary (Variable "a", Low, Variable "b"),
              [
-               Expression (AssignExpression ("c", DivideAssign, Number 2));
-               Expression (AssignExpression ("b", DivideAssign, Number 2));
                Expression (AssignExpression ("a", DivideAssign, Number 2));
+               Expression (AssignExpression ("b", DivideAssign, Number 2));
+               Expression (AssignExpression ("c", DivideAssign, Number 2));
              ] ))
         "while (a < b) do\n(a /= 2);\n(b /= 2);\n(c /= 2);\ndone"
         (fun ast -> string_of_statement "" 0 ast) );
@@ -144,15 +144,14 @@ let string_of_ast_cases =
         (While
            ( Binary (Variable "a", Low, Variable "b"),
              [
-               (* ! This statements contains in list in reversed order *)
+               Expression (AssignExpression ("a", DivideAssign, Number 2));
                Expression
                  (AssignExpression
                     ("b", DefaultAssign, Binary (Variable "b", Minus, Number 1)));
-               Expression (AssignExpression ("a", DivideAssign, Number 2));
              ] ))
         "while (a < b) do\n(a /= 2);\n(b := (b - 1));\ndone"
         (fun ast -> string_of_statement "" 0 ast) );
-    ( "if statement: 'if a < b then a /= 2; else b -= a endif'",
+    ( "if statement: 'if a < b then a /= 2; else b -= a; endif'",
       `Quick,
       test_string_of_ast
         (If
@@ -168,8 +167,8 @@ let string_of_ast_cases =
         (If
            ( Binary (Variable "a", Low, Variable "b"),
              [
-               Expression (AssignExpression ("b", MinusAssign, Variable "a"));
                Expression (AssignExpression ("a", DivideAssign, Number 2));
+               Expression (AssignExpression ("b", MinusAssign, Variable "a"));
              ],
              [ Empty ] ))
         "if (a < b) then\n(a /= 2);\n(b -= a);\nendif"
