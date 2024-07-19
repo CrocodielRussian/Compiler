@@ -209,9 +209,7 @@ let string_parse_cases =
          done\n\
          \t"
       in
-      let build =
-        build_statement text (fun t p -> parse_statements t p check_program_end)
-      in
+      let build = build_statement text parse_program in
       test_string_of_ast build
         "var acc := 1;\n\
          var n := 6;\n\
@@ -219,6 +217,21 @@ let string_parse_cases =
          (acc := (acc * n));\n\
          (n := (n - 1));\n\
          done\n" (fun ast -> string_of_statements text 0 ast) );
+    ( "Fibonachi program",
+      `Quick,
+      let text =
+        "var a:=0; var b:=1; var n:=5; while n>1 do b:=a+b;a:=b-a;n:=n-1;done"
+      in
+      let build = build_statement text parse_program in
+      test_string_of_ast build
+        "var a := 0;\n\
+         var b := 1;\n\
+         var n := 5;\n\
+         while (n > 1) do\n\
+         (b := (a + b));\n\
+         (a := (b - a));\n\
+         (n := (n - 1));\n\
+         done" (fun ast -> string_of_statements text 0 ast) );
   ]
 
 let () =
