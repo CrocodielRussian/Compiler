@@ -10,6 +10,7 @@ type oper =
   | Equal
   | Unequal
   | Invalid
+[@@deriving show]
 
 (* Assotiate with: := | += | *= | /= | -= | Invalid *)
 type assign_oper =
@@ -19,6 +20,7 @@ type assign_oper =
   | DivideAssign
   | MinusAssign
   | InvalidAssing
+[@@deriving show]
 
 type expr =
   | Variable of string
@@ -27,7 +29,7 @@ type expr =
   | Binary of expr * oper * expr (* 14  + 12 *)
   | AssignExpression of string * assign_oper * expr
 (* a := 12*)
-(* [@@derive show] *)
+[@@deriving show]
 
 type statement =
   | Expression of expr
@@ -35,7 +37,7 @@ type statement =
   | Empty
   | While of expr * statement list
   | If of expr * statement list * statement list
-(* [@@derive show] *)
+[@@deriving show]
 
 let string_of_unary_operator = function
   | Plus -> "+"
