@@ -39,18 +39,7 @@ module Main = struct
      let v = split_for_assembler result
   *)
 
-  let rec stmt_to_asm s =
-    let st_stack_pointer = ref 16 in
-    let cur_stack_pointer = ref 16 in
-    match s with
-    | Expression e1 -> expr_to_asm e1 cur_stack_pointer st_stack_pointer
-    | AssignStatement (_, e1) ->
-        expr_to_asm e1 cur_stack_pointer st_stack_pointer
-    | While (e1, _) -> expr_to_asm e1 cur_stack_pointer st_stack_pointer
-    | If (e1, _, _) -> expr_to_asm e1 cur_stack_pointer st_stack_pointer
-    | _ -> failwith "TO DO"
-
-  and expr_to_asm e cur_stack_pointer st_stack_pointer =
+  let rec expr_to_asm e cur_stack_pointer st_stack_pointer =
     match e with
     | Number n ->
         cur_stack_pointer := !cur_stack_pointer + 4;
@@ -138,7 +127,19 @@ module Main = struct
         | _ -> "<no info>") *)
     | _ -> "<no info>"
 
-  let text = "while 10 == 15 do a += 15; done"
+  let stmts_to_asm s =
+    let st_stack_pointer = ref 16 in
+    let cur_stack_pointer = ref 16 in
+    match s with
+    | Expression e1 -> expr_to_asm e1 cur_stack_pointer st_stack_pointer
+    | AssignStatement (_, e1) ->
+        expr_to_asm e1 cur_stack_pointer st_stack_pointer
+    | While (e1, stmt1) -> expr_to_asm e1 cur_stack_pointer st_stack_pointer
+    | If (e1, _, _) -> expr_to_asm e1 cur_stack_pointer st_stack_pointer
+    | _ -> failwith "TO DO"
+
+  (* var a := 15; var n := 6;  *)
+  let text = "while n > 1 do acc := acc * n; n:=n-1; done"
   let pos = ref 0
   (* let file = "bin/first.s"
      let text = ".global _start\n _start:\n"
@@ -167,5 +168,5 @@ module Main = struct
 
   let () =
     let e = parse_statements text pos check_program_end in
-    List.nth e 0 |> stmt_to_asm |> print_endline
+    List.iter (fun stmt -> stmt |> stmts_to_asm |> print_endline) e
 end
