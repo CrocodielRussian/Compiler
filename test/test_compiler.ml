@@ -2,7 +2,7 @@ open Alcotest
 open Compiler.Parser
 
 let test_string_of_ast ast expected_string executor () =
-  check string "???" (executor ast) expected_string
+  check string "???" expected_string (executor ast)
 
 let string_of_ast_cases =
   [
@@ -199,6 +199,26 @@ let string_parse_cases =
       test_string_of_ast build
         "var a := 10;\nvar b := 15;\n(b -= a);\n(a /= b);" (fun ast ->
           string_of_statements text 0 ast) );
+    ( "Factorial program",
+      `Quick,
+      let text =
+        "\tvar \t\tacc\t:=1\t;var n:=(((6)));while (n)>(1) \n\
+         do acc:=acc\r*n\n\n\
+         ;\n\
+         n:=n-1;\n\n\n\
+         done\n\
+         \t"
+      in
+      let build =
+        build_statement text (fun t p -> parse_statements t p check_program_end)
+      in
+      test_string_of_ast build
+        "var acc := 1;\n\
+         var n := 6;\n\
+         while (n > 1) do\n\
+         (acc := (acc * n));\n\
+         (n := (n - 1));\n\
+         done\n" (fun ast -> string_of_statements text 0 ast) );
   ]
 
 let () =
