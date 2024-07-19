@@ -321,7 +321,6 @@ let check_expr_stmt_close text pos expression =
 let parse_expr_statement text pos =
   skip_whitespaces text pos;
   let result = parse_expr text pos in
-  print_endline (string_of_expression text pos result);
   match result with
   | EmptyExpression -> EmptyStatement
   | _ -> check_expr_stmt_close text pos result
@@ -395,6 +394,16 @@ let check_else_and_endif_construction_exists text pos =
     | _ -> true
   else false
 
+let check_endif_exists_and_skip text pos =
+  skip_whitespaces text pos;
+  if !pos + 5 <= String.length text then
+    match String.sub text !pos 5 with
+    | "endif" ->
+        pos := !pos + 5;
+        false
+    | _ -> true
+  else false
+
 let rec parse_while_loop_statement text pos =
   skip_whitespaces text pos;
   if !pos > String.length text then
@@ -449,17 +458,15 @@ and parse_if_statement text pos =
             If
               ( expression,
                 if_fork,
-                parse_statements text pos
-                  check_else_and_endif_construction_exists )
+                parse_statements text pos check_endif_exists_and_skip )
         | _ ->
             failwith
               ("Parser Error: on position " ^ (!pos |> string_of_int)
              ^ " couldn't find assign statement.")
-      else (
-        print_int (String.length text);
+      else
         failwith
           ("ParserError: on position " ^ (!pos |> string_of_int)
-         ^ " couldn't find else.")))
+         ^ " couldn't find else."))
     else
       failwith
         ("ParserError: on position " ^ (!pos |> string_of_int)

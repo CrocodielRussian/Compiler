@@ -171,7 +171,7 @@ let string_of_ast_cases =
                Expression (AssignExpression ("b", MinusAssign, Variable "a"));
                Expression (AssignExpression ("a", DivideAssign, Number 2));
              ],
-             [ Empty ] ))
+             [ EmptyStatement ] ))
         "if (a < b) then\n(a /= 2);\n(b -= a);\nendif"
         (fun ast -> string_of_statement "" 0 ast) );
   ]

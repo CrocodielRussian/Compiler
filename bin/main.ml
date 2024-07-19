@@ -13,7 +13,8 @@ module Main = struct
      (b := (a + b));\n\
      (a := (b - a));\n\
      (n := (n - 1));\n\
-     done\n"
+     done\n\
+     if a < 10 then a += 20; else b += 30; endif"
 
   let pos = ref 0
   let res = Compiler.Parser.parse_program text pos
