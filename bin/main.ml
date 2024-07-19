@@ -1,39 +1,9 @@
 open Compiler.Parser
 
 module Main = struct
-  let text = "while n > 10 do a+=1; done"
-  let pos = ref 0
-  let res = parse_program text pos
-  (* let el = if List.length res > 0 then Some (List.nth res 0) else None
-
-     let rec expr_and_statements_from_statement = function
-       | While (e, sl) -> (Some e, Some sl, None)
-       | If (e, sl1, sl2) -> (Some e, Some sl1, Some sl2)
-       | Expression e -> (Some e, None, None)
-       | AssignStatement (_, e) -> (Some e, None, None)
-       | _ -> failwith "Error"
-
-     and get_expr_and_statements el =
-       match el with
-       | Some el -> expr_and_statements_from_statement el
-       | None -> failwith "No statement to process" *)
-
-  (* let split_for_assembler = function
-     | _, Some stmts1, None ->
-         List.iter
-           (fun stmt -> string_of_statement text pos stmt |> print_endline)
-           stmts1
-     | Some e1, _, _ -> string_of_expression text pos e1 |> print_endline
-     | _, Some stmts1, Some stmts2 ->
-         List.iter
-           (fun stmt -> string_of_statement text pos stmt |> print_endline)
-           stmts1;
-         List.iter
-           (fun stmt -> string_of_statement text pos stmt |> print_endline)
-           stmts2
-     | None, _, _ -> failwith "Error: first element is None" *)
-
-  (* let v = split_for_assembler result *)
+  (* let text = "while n > 10 do a+=1; done"
+     let pos = ref 0
+     let res = parse_program text pos *)
 
   let rec expr_to_asm e cur_stack_pointer shift costl =
     match e with
@@ -55,6 +25,7 @@ module Main = struct
             cur_stack_pointer := !cur_stack_pointer + 4;
             shift := !shift + 4 + (4 * !costl);
             costl := 1;
+            (* Это костыль, за который мне стыдно:()*)
             asm1 ^ "\n" ^ asm2 ^ "\nlw a5, -"
             ^ string_of_int (!cur_stack_pointer - (4 + !shift))
             ^ "(s0)\n" ^ "mv a4, a5\n" ^ "lw a5, -"
@@ -62,44 +33,44 @@ module Main = struct
             ^ "(s0)" ^ "\naddw a5, a4, a5" ^ "\n" ^ "sw a5, -"
             ^ string_of_int (!cur_stack_pointer - (4 + !shift))
             ^ "(s0)"
-        (* | More ->
-               cur_stack_pointer := !cur_stack_pointer + 4;
-               asm1 ^ "\n" ^ asm2 ^ "\nlw a5, -"
-               ^ string_of_int !cur_stack_pointer
-               ^ "(s0)\n" ^ "mv a4, a5\n" ^ "lw a5, -"
-               ^ string_of_int (!cur_stack_pointer + 4)
-               ^ "\nsgt a5, a4, a5" ^ "\n" ^ "andi a5, a5, 0xff\n" ^ "sw a5, -"
-               ^ string_of_int !cur_stack_pointer
-               ^ "(s0)"
-           | Low ->
-               cur_stack_pointer := !cur_stack_pointer + 4;
-               asm1 ^ "\n" ^ asm2 ^ "\nlw a5, -"
-               ^ string_of_int !st_stack_pointer
-               ^ "(s0)\n" ^ "mv a4, a5\n" ^ "lw a5, -"
-               ^ string_of_int (!st_stack_pointer + 4)
-               ^ "\nslt a5, a4, a5" ^ "\n" ^ "andi a5, a5, 0xff\n" ^ "sw a5, -"
-               ^ string_of_int !cur_stack_pointer
-               ^ "(s0)"
-           | Equal ->
-               cur_stack_pointer := !cur_stack_pointer + 4;
-               asm1 ^ "\n" ^ asm2 ^ "\nlw a5, -"
-               ^ string_of_int !st_stack_pointer
-               ^ "(s0)\n" ^ "mv a4, a5\n" ^ "lw a5, -"
-               ^ string_of_int (!st_stack_pointer + 4)
-               ^ "\nsub a5, a4, a5" ^ "\nseqz a5, a4, a5" ^ "\n"
-               ^ "andi a5, a5, 0xff\n" ^ "sw a5, -"
-               ^ string_of_int !cur_stack_pointer
-               ^ "(s0)"
-           | Unequal ->
-               cur_stack_pointer := !cur_stack_pointer + 4;
-               asm1 ^ "\n" ^ asm2 ^ "\nlw a5, -"
-               ^ string_of_int !st_stack_pointer
-               ^ "(s0)\n" ^ "mv a4, a5\n" ^ "lw a5, -"
-               ^ string_of_int (!st_stack_pointer - 4)
-               ^ "\nsub a5, a4, a5" ^ "\nsnez a5, a4, a5" ^ "\n"
-               ^ "andi a5, a5, 0xff\n" ^ "sw a5, -"
-               ^ string_of_int !cur_stack_pointer
-               ^ "(s0)" *)
+        | More ->
+            cur_stack_pointer := !cur_stack_pointer + 4;
+            asm1 ^ "\n" ^ asm2 ^ "\nlw a5, -"
+            ^ string_of_int !cur_stack_pointer
+            ^ "(s0)\n" ^ "mv a4, a5\n" ^ "lw a5, -"
+            ^ string_of_int (!cur_stack_pointer + 4)
+            ^ "\nsgt a5, a4, a5" ^ "\n" ^ "andi a5, a5, 0xff\n" ^ "sw a5, -"
+            ^ string_of_int !cur_stack_pointer
+            ^ "(s0)"
+            (*| Low ->
+                   cur_stack_pointer := !cur_stack_pointer + 4;
+                   asm1 ^ "\n" ^ asm2 ^ "\nlw a5, -"
+                   ^ string_of_int !st_stack_pointer
+                   ^ "(s0)\n" ^ "mv a4, a5\n" ^ "lw a5, -"
+                   ^ string_of_int (!st_stack_pointer + 4)
+                   ^ "\nslt a5, a4, a5" ^ "\n" ^ "andi a5, a5, 0xff\n" ^ "sw a5, -"
+                   ^ string_of_int !cur_stack_pointer
+                   ^ "(s0)"
+               | Equal ->
+                   cur_stack_pointer := !cur_stack_pointer + 4;
+                   asm1 ^ "\n" ^ asm2 ^ "\nlw a5, -"
+                   ^ string_of_int !st_stack_pointer
+                   ^ "(s0)\n" ^ "mv a4, a5\n" ^ "lw a5, -"
+                   ^ string_of_int (!st_stack_pointer + 4)
+                   ^ "\nsub a5, a4, a5" ^ "\nseqz a5, a4, a5" ^ "\n"
+                   ^ "andi a5, a5, 0xff\n" ^ "sw a5, -"
+                   ^ string_of_int !cur_stack_pointer
+                   ^ "(s0)"
+               | Unequal ->
+                   cur_stack_pointer := !cur_stack_pointer + 4;
+                   asm1 ^ "\n" ^ asm2 ^ "\nlw a5, -"
+                   ^ string_of_int !st_stack_pointer
+                   ^ "(s0)\n" ^ "mv a4, a5\n" ^ "lw a5, -"
+                   ^ string_of_int (!st_stack_pointer - 4)
+                   ^ "\nsub a5, a4, a5" ^ "\nsnez a5, a4, a5" ^ "\n"
+                   ^ "andi a5, a5, 0xff\n" ^ "sw a5, -"
+                   ^ string_of_int !cur_stack_pointer
+                   ^ "(s0)" *)
         | _ -> "<no-info>")
     | AssignExpression (_, DefaultAssign, ex2) ->
         expr_to_asm ex2 cur_stack_pointer shift costl
@@ -119,20 +90,20 @@ module Main = struct
         | _ -> "<no info>") *)
     | _ -> "<no info>"
 
-  let stmt_to_asm s cur_stack_pointer st_stack_pointer shift =
+  let rec stmt_to_asm s cur_stack_pointer shift costl =
     match s with
-    | Expression e1 -> expr_to_asm e1 cur_stack_pointer st_stack_pointer shift
-    | AssignStatement (_, e1) ->
-        expr_to_asm e1 cur_stack_pointer st_stack_pointer shift
-    | While (e1, _) -> expr_to_asm e1 cur_stack_pointer st_stack_pointer shift
-    | If (e1, _, _) -> expr_to_asm e1 cur_stack_pointer st_stack_pointer shift
+    | Expression e1 -> expr_to_asm e1 cur_stack_pointer shift costl
+    | AssignStatement (_, e1) -> expr_to_asm e1 cur_stack_pointer shift costl
+    | While (e1, stmt1) -> stmts_to_asm e1 stmt1 cur_stack_pointer shift costl
+    | If (e1, _, _) -> expr_to_asm e1 cur_stack_pointer shift costl
     | _ -> failwith "TO DO"
 
-  (* pos := !pos - String.length stmt;
-     let result = parse_expr_statement text pos in
-     all := !all @ [ result ] !all *)
+  and stmts_to_asm expression statements cur_stack_pointer shift costl =
+    let e1 = expr_to_asm expression cur_stack_pointer shift costl in
+    List.fold_left
+      (fun acc stmt -> acc ^ stmt_to_asm stmt cur_stack_pointer shift costl)
+      e1 statements
 
-  (* var a := 15; var n := 6;  *)
   (* let file = "bin/first.s"
      let text = ".global _start\n _start:\n"
      let count_of_var = 5
@@ -157,9 +128,9 @@ module Main = struct
           let oc = open_out file in
           Printf.fprintf oc "%s\n" text;
           close_out oc *)
-  let text = "10 + 14 + 15;"
-  (* "var a := 1; var b := 2; while 10 < 20 do 10 + 12; done var c := 3;" *)
 
+  (* "var a := 1; var b := 2; while 10 < 20 do 10 + 12; done var c := 3;" *)
+  let text = "while 10 > 20 do 10 + 12; done"
   let pos = ref 0
   let shift = ref 0
   let costl = ref 0
