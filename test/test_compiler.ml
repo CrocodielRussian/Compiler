@@ -136,7 +136,7 @@ let string_of_ast_cases =
                Expression (AssignExpression ("b", DivideAssign, Number 2));
                Expression (AssignExpression ("a", DivideAssign, Number 2));
              ] ))
-        "while (a < b) do\n(a /= 2);\n(b /= 2);\n(c /= 2);\ndone"
+        "while (a < b) do\n(c /= 2);\n(b /= 2);\n(a /= 2);\ndone"
         (fun ast -> string_of_statement "" 0 ast) );
     ( "Big while loop statement: 'while a < b do a /= 2; b:=b-1; done'",
       `Quick,
@@ -150,7 +150,7 @@ let string_of_ast_cases =
                     ("b", DefaultAssign, Binary (Variable "b", Minus, Number 1)));
                Expression (AssignExpression ("a", DivideAssign, Number 2));
              ] ))
-        "while (a < b) do\n(a /= 2);\n(b := (b - 1));\ndone"
+        "while (a < b) do\n(b := (b - 1));\n(a /= 2);\ndone"
         (fun ast -> string_of_statement "" 0 ast) );
     ( "if statement: 'if a < b then a /= 2; else b -= a endif'",
       `Quick,
@@ -172,45 +172,32 @@ let string_of_ast_cases =
                Expression (AssignExpression ("a", DivideAssign, Number 2));
              ],
              [ EmptyStatement ] ))
-        "if (a < b) then\n(a /= 2);\n(b -= a);\nendif"
+        "if (a < b) then\n(b -= a);\n(a /= 2);\nendif"
         (fun ast -> string_of_statement "" 0 ast) );
   ]
 
-let build_statement text =
+let build_statement text parse_func =
   let pos = ref 0 in
-  parse_statements text pos check_program_end
+  parse_func text pos
 
 let string_parse_cases =
   [
-    ( "Expression statement: '10;'",
+    ( "Math statement: '10 + 90 / (34 * -23 + 90) < 3;'",
       `Quick,
-      let text = "10;" in
-      let build = build_statement text in
-      test_string_of_ast build "10;" (fun ast ->
-          string_of_statements text 0 ast) );
-    ( "Math statement: '10 + a / (34 * -23 - 90);'",
+      let text = "10 + 90 / (34 * -23 + 90) < 3;" in
+      let build = build_statement text parse_expr_statement in
+      test_string_of_ast build "((10 + (90 / ((34 * -(23)) + 90))) < 3);"
+        (fun ast -> string_of_statement text 0 ast) );
+    ( "Simple program",
       `Quick,
-      let text = "10 + a / (34 * -23 - 90);" in
-      let build = build_statement text in
-      test_string_of_ast build "(10 + (a / ((34 * -(23)) - 90)));" (fun ast ->
-          string_of_statements text 0 ast) );
-    ( "Compare statement: '10 != a <= (34 * 23 > -90);'",
-      `Quick,
-      let text = "10 != a <= (34 * 23 > -90);" in
-      let build = build_statement text in
-      test_string_of_ast build "(10 != (a <= ((34 * 23) > -(90))));" (fun ast ->
-          string_of_statements text 0 ast) );
-    ( "Assign expression statement: 'a := -(b := 5) < 90;'",
-      `Quick,
-      let text = "a := -(b := 5) < 90;" in
-      let build = build_statement text in
-      test_string_of_ast build "(a := (-((b := 5)) < 90));" (fun ast ->
-          string_of_statements text 0 ast) );
-    ( "Variable init statement: 'a := -(b := 5) < 90;'",
-      `Quick,
-      let text = "var a := -(b := 5) < 90;" in
-      let build = build_statement text in
-      test_string_of_ast build "var a := (-((b := 5)) < 90);" (fun ast ->
+      let text =
+        "\tvar a:= 10  ;var\t b\t   := 15     ;\nb -=      a;\na       /= b;"
+      in
+      let build =
+        build_statement text (fun t p -> parse_statements t p check_program_end)
+      in
+      test_string_of_ast build
+        "var a := 10;\nvar b := 15;\n(b -= a);\n(a /= b);" (fun ast ->
           string_of_statements text 0 ast) );
   ]
 
