@@ -33,7 +33,6 @@ type expr =
   | EmptyExpression
 [@@deriving show]
 
-
 type statement =
   | Expression of expr
   | AssignStatement of string * expr
@@ -159,7 +158,12 @@ let identifier text pos =
 let variable text pos =
   skip_whitespaces text pos;
   let acc = identifier text pos in
-  if String.length acc > 0 then Variable acc
+  if String.length acc > 0 then
+    if StringSet.mem acc !initialised_variables then Variable acc
+    else
+      failwith
+        ("LogicError: on position " ^ string_of_int !pos
+       ^ " find undound variable: '" ^ acc ^ "'.")
   else
     failwith
       ("Parser Error: on position " ^ (!pos |> string_of_int)
