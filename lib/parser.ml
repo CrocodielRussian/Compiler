@@ -1,3 +1,5 @@
+module StringSet = Set.Make (String)
+
 type oper =
   | Plus
   | Multiply
@@ -28,13 +30,14 @@ type expr =
   | Unary of oper * expr (* -12 *)
   | Binary of expr * oper * expr (* 14  + 12 *)
   | AssignExpression of string * assign_oper * expr
-(* a := 12*)
+  | EmptyExpression
 [@@deriving show]
+
 
 type statement =
   | Expression of expr
   | AssignStatement of string * expr
-  | Empty
+  | EmptyStatement
   | While of expr * statement list
   | If of expr * statement list * statement list
 [@@deriving show]
@@ -85,6 +88,7 @@ let rec string_of_expression text pos = function
       ^ " "
       ^ string_of_expression text pos e
       ^ ")"
+  | EmptyExpression -> ""
 
 let rec string_of_statements text pos stmts =
   let str_lst =
@@ -93,7 +97,7 @@ let rec string_of_statements text pos stmts =
   String.concat "\n" str_lst
 
 and string_of_statement text pos = function
-  | Empty -> ""
+  | EmptyStatement -> ""
   | Expression e -> string_of_expression text pos e ^ ";"
   | AssignStatement (v, e2) ->
       "var " ^ v ^ " := " ^ string_of_expression text pos e2 ^ ";"
@@ -104,7 +108,7 @@ and string_of_statement text pos = function
       ^ string_of_statements text pos stmts
       ^ "\ndone"
   | If (e1, if_stmts, else_stmts) ->
-      if else_stmts = [ Empty ] then
+      if else_stmts = [ EmptyStatement ] then
         "if "
         ^ string_of_expression text pos e1
         ^ " then\n"
@@ -119,6 +123,7 @@ and string_of_statement text pos = function
         ^ string_of_statements text pos else_stmts
         ^ "\nendif"
 
+let initialised_variables = ref (StringSet.of_list [])
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
 let is_whitespace = function ' ' | '\r' | '\t' | '\n' -> true | _ -> false
@@ -237,7 +242,12 @@ and parse_assign_expr name text pos =
   skip_whitespaces text pos;
   let operation = parse_assgn_operation text pos in
   if operation = InvalidAssing then parse_compare_expr (Variable name) text pos
-  else AssignExpression (name, operation, parse_expr text pos)
+  else if StringSet.mem name !initialised_variables then
+    AssignExpression (name, operation, parse_expr text pos)
+  else
+    failwith
+      ("LogicError: on position " ^ string_of_int !pos
+     ^ " find undound variable: '" ^ name ^ "'.")
 
 and parse_math_expr text pos =
   skip_whitespaces text pos;
@@ -267,10 +277,7 @@ and parse_mult_expr text pos =
 
 and parse_simplest_expr text pos =
   skip_whitespaces text pos;
-  if !pos >= String.length text then
-    failwith
-      ("Parser Error: on position " ^ (!pos |> string_of_int)
-     ^ " couldn't find expression.")
+  if !pos >= String.length text then EmptyExpression
   else
     match text.[!pos] with
     | '-' ->
@@ -309,14 +316,19 @@ let check_exists_simple_stmt_close text pos =
     | _ -> false
   else false
 
-let parse_expr_statement text pos =
-  skip_whitespaces text pos;
-  let result = parse_expr text pos in
-  if check_exists_simple_stmt_close text pos then Expression result
+let check_expr_stmt_close text pos expression =
+  if check_exists_simple_stmt_close text pos then Expression expression
   else
     failwith
       ("Parser Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find close symbol of expression statement: ';'.")
+
+let parse_expr_statement text pos =
+  skip_whitespaces text pos;
+  let result = parse_expr text pos in
+  match result with
+  | EmptyExpression -> EmptyStatement
+  | _ -> check_expr_stmt_close text pos result
 
 let assert_assign_statement_op text pos =
   skip_whitespaces text pos;
@@ -332,12 +344,19 @@ let parser_assign_statement text pos =
   skip_whitespaces text pos;
   let ident = identifier text pos in
   assert_assign_statement_op text pos;
-  let assign = AssignStatement (ident, parse_expr text pos) in
-  if check_exists_simple_stmt_close text pos then assign
-  else
+  if StringSet.mem ident !initialised_variables then
     failwith
-      ("Parser Error: on position " ^ (!pos |> string_of_int)
-     ^ " couldn't find close symbol of statement: ';'.")
+      ("LogicError: on position " ^ string_of_int !pos ^ " init variable "
+     ^ ident ^ ", which exists now.")
+  else
+    let assign = AssignStatement (ident, parse_expr text pos) in
+    if check_exists_simple_stmt_close text pos then (
+      initialised_variables := StringSet.add ident !initialised_variables;
+      assign)
+    else
+      failwith
+        ("Parser Error: on position " ^ (!pos |> string_of_int)
+       ^ " couldn't find close symbol of statement: ';'.")
 
 let check_do_exists text pos =
   skip_whitespaces text pos;
@@ -377,6 +396,16 @@ let check_else_and_endif_construction_exists text pos =
     match String.sub text !pos 5 with
     | "else " | "else\t" | "else\n" | "else\r" -> false
     | "endif" -> false
+    | _ -> true
+  else false
+
+let check_endif_exists_and_skip text pos =
+  skip_whitespaces text pos;
+  if !pos + 5 <= String.length text then
+    match String.sub text !pos 5 with
+    | "endif" ->
+        pos := !pos + 5;
+        false
     | _ -> true
   else false
 
@@ -428,23 +457,21 @@ and parse_if_statement text pos =
         match String.sub text !pos 5 with
         | "endif" ->
             pos := !pos + 5;
-            If (expression, if_fork, [ Empty ])
+            If (expression, if_fork, [ EmptyStatement ])
         | "else " | "else\t" | "else\n" | "else\r" ->
             pos := !pos + 5;
             If
               ( expression,
                 if_fork,
-                parse_statements text pos
-                  check_else_and_endif_construction_exists )
+                parse_statements text pos check_endif_exists_and_skip )
         | _ ->
             failwith
               ("Parser Error: on position " ^ (!pos |> string_of_int)
              ^ " couldn't find assign statement.")
-      else (
-        print_int (String.length text);
+      else
         failwith
           ("ParserError: on position " ^ (!pos |> string_of_int)
-         ^ " couldn't find else.")))
+         ^ " couldn't find else."))
     else
       failwith
         ("ParserError: on position " ^ (!pos |> string_of_int)
@@ -473,4 +500,7 @@ and parse_statements text pos check =
   !all
 
 let check_program_end text pos = !pos < String.length text
-let parse_program text pos = parse_statements text pos check_program_end
+
+let parse_program text pos =
+  initialised_variables := StringSet.of_list [];
+  parse_statements text pos check_program_end
