@@ -12,6 +12,7 @@ type oper =
   | Equal
   | Unequal
   | Invalid
+[@@deriving show]
 
 (* Assotiate with: := | += | *= | /= | -= | Invalid *)
 type assign_oper =
@@ -21,14 +22,17 @@ type assign_oper =
   | DivideAssign
   | MinusAssign
   | InvalidAssing
+[@@deriving show]
 
 type expr =
   | Variable of string
-  | Number of int
-  | Unary of oper * expr
-  | Binary of expr * oper * expr
+  | Number of int (* 12 *)
+  | Unary of oper * expr (* -12 *)
+  | Binary of expr * oper * expr (* 14  + 12 *)
   | AssignExpression of string * assign_oper * expr
   | EmptyExpression
+[@@deriving show]
+
 
 type statement =
   | Expression of expr
@@ -36,6 +40,7 @@ type statement =
   | EmptyStatement
   | While of expr * statement list
   | If of expr * statement list * statement list
+[@@deriving show]
 
 let string_of_unary_operator = function
   | Plus -> "+"
@@ -315,7 +320,7 @@ let check_expr_stmt_close text pos expression =
   if check_exists_simple_stmt_close text pos then Expression expression
   else
     failwith
-      ("ParserMYNAME Error: on position " ^ (!pos |> string_of_int)
+      ("Parser Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find close symbol of expression statement: ';'.")
 
 let parse_expr_statement text pos =

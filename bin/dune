@@ -3,4 +3,7 @@
  (name main)
  (libraries compiler)
  (preprocess
-  (pps ppx_deriving.show ppx_deriving.ord)))
+  (pps ppx_deriving.show ppx_deriving.ord))
+ ; (flags
+ ;  (:standard -dsource))
+ )
