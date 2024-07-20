@@ -145,7 +145,7 @@ module Main = struct
           close_out oc *)
 
   (* "var a := 1; var b := 2; while 10 < 20 do 10 + 12; done var c := 3;" *)
-  let text = "10 + 20;"
+  let text = "var a := 10; var b := 20; "
   let pos = ref 0
   let shift = ref 0
   let costl = ref 0
@@ -154,11 +154,11 @@ module Main = struct
 
   let () =
     let statements = parse_program text pos in
-    variables_shifts := init_variables cur_stack_pointer statements;
+    variables_shifts := init_variables st_stack_pointer statements;
     StringMap.iter
       (fun key value -> print_endline (key ^ ": " ^ string_of_int value))
       !variables_shifts;
-    print_endline "=======";
+
     List.iter
       (fun stmt ->
         stmt_to_asm stmt cur_stack_pointer st_stack_pointer |> print_endline)
