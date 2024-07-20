@@ -3,6 +3,20 @@ open Compiler.Parser
 module Main = struct
   module StringMap = Map.Make (String)
 
+  let init_variables (cur_stack_pointer : int ref) (statements : statement list)
+      =
+    let variables_stack_position : int StringMap.t ref = ref StringMap.empty in
+    List.iter
+      (fun stmt ->
+        match stmt with
+        | AssignStatement (v, _) ->
+            cur_stack_pointer := !cur_stack_pointer + 4;
+            variables_stack_position :=
+              StringMap.add v !cur_stack_pointer !variables_stack_position
+        | _ -> ())
+      statements;
+    !variables_stack_position
+
   let variables_shifts : int StringMap.t ref = ref StringMap.empty
 
   let rec expr_to_asm e cur_stack_pointer st_stack_pointer =
@@ -131,7 +145,7 @@ module Main = struct
           close_out oc *)
 
   (* "var a := 1; var b := 2; while 10 < 20 do 10 + 12; done var c := 3;" *)
-  let text = "10 + 20;"
+  let text = "10 + 12 +14 +15; var a := 10; 12 + 90; 45 + 34; var b := 123;"
   let pos = ref 0
   let shift = ref 0
   let costl = ref 0
@@ -139,9 +153,14 @@ module Main = struct
   let st_stack_pointer = ref 16
 
   let () =
-    let e = parse_program text pos in
+    let statements = parse_program text pos in
+    variables_shifts := init_variables cur_stack_pointer statements;
+    StringMap.iter
+      (fun key value -> print_endline (key ^ ": " ^ string_of_int value))
+      !variables_shifts;
+    print_endline "=======";
     List.iter
       (fun stmt ->
         stmt_to_asm stmt cur_stack_pointer st_stack_pointer |> print_endline)
-      e
+      statements
 end
