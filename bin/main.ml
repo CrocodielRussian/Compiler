@@ -21,90 +21,44 @@ module Main = struct
 
   let rec expr_to_asm e cur_stack_pointer st_stack_pointer =
     match e with
-    (* | AssignExpression (v, op, ex) -> (
-        let var_shift = StringMap.find v !variables_shifts in
-        let expr_asm = expr_to_asm ex cur_stack_pointer shift costl in
+    | AssignExpression (v, op, ex) -> (
+        let var_pos = StringMap.find v !variables_shifts in
+        let expr_asm = expr_to_asm ex cur_stack_pointer st_stack_pointer in
         match op with
         | DefaultAssign ->
-            expr_asm ^ "\n" ^ "sw a5, -" ^ string_of_int var_shift ^ "(s0)"
-        | PlusAssign ->
-            expr_asm ^ "\n" ^ "lw a4, -" ^ string_of_int var_shift ^ "(s0)\n"
-            ^ "addw a5, a4, a5\n" ^ "sw a5, -" ^ string_of_int var_shift
-            ^ "(s0)"
-        | MinusAssign ->
-            expr_asm ^ "\n" ^ "lw a4, -" ^ string_of_int var_shift ^ "(s0)\n"
-            ^ "subw a5, a4, a5\n" ^ "sw a5, -" ^ string_of_int var_shift
-            ^ "(s0)"
-        | MultiplyAssign ->
-            expr_asm ^ "\n" ^ "lw a4, -" ^ string_of_int var_shift ^ "(s0)\n"
-            ^ "mulw a5, a4, a5\n" ^ "sw a5, -" ^ string_of_int var_shift
-            ^ "(s0)"
-        | DivideAssign ->
-            expr_asm ^ "\n" ^ "lw a4, -" ^ string_of_int var_shift ^ "(s0)\n"
-            ^ "divw a5, a4, a5\n" ^ "sw a5, -" ^ string_of_int var_shift
-            ^ "(s0)"
-        | InvalidAssing ->
-            failwith "AST Error: unexpected assign expression type") *)
-    | Number n ->
-        cur_stack_pointer := !cur_stack_pointer + 4;
-        "li a5, " ^ string_of_int n ^ "\n" ^ "sw a5, -"
-        ^ string_of_int !cur_stack_pointer
-        ^ "(s0)"
-    | Unary (o, ex) -> (
-        match o with
-        | Minus ->
-            expr_to_asm ex cur_stack_pointer st_stack_pointer ^ "\nneg a5, a5"
-        | Plus -> expr_to_asm ex cur_stack_pointer st_stack_pointer
+            expr_asm ^ "\n" ^ "sw a5, -" ^ string_of_int var_pos ^ "(s0)"
         | _ -> "")
+    | Number n -> "li a5, " ^ string_of_int n
+    | Variable v ->
+        let var_pos = StringMap.find v !variables_shifts in
+        "lw a5, -" ^ string_of_int var_pos ^ "(s0)"
     | Binary (ex1, o, ex2) -> (
         let asm1 = expr_to_asm ex1 cur_stack_pointer st_stack_pointer in
+        cur_stack_pointer := !cur_stack_pointer + 4;
         let asm2 = expr_to_asm ex2 cur_stack_pointer st_stack_pointer in
-        match o with
-        | Plus ->
-            let text = asm1 ^ "\n" ^ asm2 ^ "\n" ^ "li a5, zero" ^ "\n" in
-            let buf = Buffer.create 1024 in
-            while !st_stack_pointer < !cur_stack_pointer do
-              st_stack_pointer := !st_stack_pointer + 4;
-              Buffer.add_string buf
-                (Printf.sprintf "ld a4, -%d(s0)\naddi a5, a5, a4\n"
-                   !st_stack_pointer)
-            done;
-            st_stack_pointer := !st_stack_pointer + 4;
-            cur_stack_pointer := !st_stack_pointer;
-            text ^ Buffer.contents buf ^ "sw a5, -"
-            ^ string_of_int !st_stack_pointer
-            ^ "(s0)\n"
-        (* ld a4, -20(s0)
-           addi a5, a5, a4
-           ld a4, -24(s0)
-           addi a5, a5, a4
-           ld a4, -28(s0)
-           addi a5, a5, a4
-           sw a5, -32(s0) *)
-        | _ -> "<no-info>")
-    | AssignExpression (_, DefaultAssign, ex2) ->
-        expr_to_asm ex2 cur_stack_pointer st_stack_pointer
-    (* | AssignExpression (_, o, ex2) -> (
-        let asm2 = expr_to_asm ex2 cur_stack_pointer st_stack_pointer in
-        match o with
-        | PlusAssign ->
-            cur_stack_pointer := !cur_stack_pointer + 4;
-            st_stack_pointer := !st_stack_pointer + 4;
-            asm1 ^ "\n" ^ asm2 ^ "\nlw a5, -"
-            ^ string_of_int !st_stack_pointer
-            ^ "(s0)\n" ^ "mv a4, a5\n" ^ "lw a5, -"
-            ^ string_of_int (!st_stack_pointer + 4)
-            ^ "\naddw a5, a4, a5" ^ "\n" ^ "sw a5, -"
-            ^ string_of_int !cur_stack_pointer
-            ^ "(s0)"
-        | _ -> "<no info>") *)
+        let full_asm =
+          asm1 ^ "\nsw a5, -"
+          ^ string_of_int !cur_stack_pointer
+          ^ "(s0)" ^ "\n" ^ asm2 ^ "\n" ^ "lw a4, -"
+          ^ string_of_int !cur_stack_pointer
+          ^ "(s0)"
+        in
+        cur_stack_pointer := !cur_stack_pointer - 4;
+        match o with Plus -> full_asm ^ "\naddw a5, a4, a5" | _ -> "<no-info>")
     | _ -> "<no info>"
 
   let rec stmt_to_asm s cur_stack_pointer st_stack_pointer =
     match s with
-    | Expression e1 -> expr_to_asm e1 cur_stack_pointer st_stack_pointer
-    | AssignStatement (_, e1) ->
-        expr_to_asm e1 cur_stack_pointer st_stack_pointer
+    | Expression e1 -> (
+        match e1 with
+        | AssignExpression (_, _, _) ->
+            expr_to_asm e1 cur_stack_pointer st_stack_pointer
+        | _ -> "")
+    | AssignStatement (v, e1) ->
+        (* var <v> = <e1>*)
+        let var_pos = StringMap.find v !variables_shifts in
+        let asm = expr_to_asm e1 cur_stack_pointer st_stack_pointer in
+        asm ^ "\nsw a5, -" ^ string_of_int var_pos ^ "(s0)"
     | While (e1, stmt1) ->
         stmts_to_asm e1 stmt1 cur_stack_pointer st_stack_pointer
     | If (e1, _, _) -> expr_to_asm e1 cur_stack_pointer st_stack_pointer
@@ -145,7 +99,7 @@ module Main = struct
           close_out oc *)
 
   (* "var a := 1; var b := 2; while 10 < 20 do 10 + 12; done var c := 3;" *)
-  let text = "var a := 10; var b := 20; "
+  let text = "var a := 10;  var b := 20; b := 10 + 20; a := a + (20 + 30) + 40;"
   let pos = ref 0
   let shift = ref 0
   let costl = ref 0
@@ -159,8 +113,12 @@ module Main = struct
       (fun key value -> print_endline (key ^ ": " ^ string_of_int value))
       !variables_shifts;
 
+    print_endline "=======";
+    cur_stack_pointer := !st_stack_pointer;
     List.iter
       (fun stmt ->
         stmt_to_asm stmt cur_stack_pointer st_stack_pointer |> print_endline)
-      statements
+      statements;
+    print_endline (string_of_int !cur_stack_pointer);
+    print_endline (string_of_int !st_stack_pointer)
 end
