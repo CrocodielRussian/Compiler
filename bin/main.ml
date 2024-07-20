@@ -131,7 +131,7 @@ module Main = struct
           close_out oc *)
 
   (* "var a := 1; var b := 2; while 10 < 20 do 10 + 12; done var c := 3;" *)
-  let text = "10 + 20;"
+  let text = "var acc:= 7; var n:=1 while do n := n - 1; "
   let pos = ref 0
   let shift = ref 0
   let costl = ref 0
