@@ -44,10 +44,39 @@ module Main = struct
           ^ "(s0)"
         in
         cur_stack_pointer := !cur_stack_pointer - 4;
-        match o with Plus -> full_asm ^ "\naddw a5, a4, a5" | _ -> "<no-info>")
+        match o with
+        | Plus -> full_asm ^ "\naddw a5, a4, a5"
+        | Minus -> full_asm ^ "\nsub a5, a5, a4"
+        | More -> full_asm ^ "\nsgt a5, a4, a5" ^ "\n" ^ "andi a5, a5, 0xff"
+        | Low -> full_asm ^ "\nslt a5, a4, a5" ^ "\n" ^ "andi a5, a5, 0xff"
+        | _ -> "<no-info>")
+    | EmptyExpression -> ""
     | _ -> "<no info>"
 
-  let rec stmt_to_asm s cur_stack_pointer st_stack_pointer =
+  let parse_of_condition e cur_stack_pointer st_stack_pointer =
+    match e with
+    | Binary (ex1, o, ex2) -> (
+        let asm1 = expr_to_asm ex1 cur_stack_pointer st_stack_pointer in
+        cur_stack_pointer := !cur_stack_pointer + 4;
+        let asm2 = expr_to_asm ex2 cur_stack_pointer st_stack_pointer in
+        let full_asm =
+          asm1 ^ "\nsw a5, -"
+          ^ string_of_int !cur_stack_pointer
+          ^ "(s0)" ^ "\n" ^ asm2 ^ "\n" ^ "lw a4, -"
+          ^ string_of_int !cur_stack_pointer
+          ^ "(s0)"
+        in
+        match o with
+        | Low -> full_asm ^ "\nblt a4, a5, .L3" ^ "\n"
+        | More -> full_asm ^ "\nbgt a4, a5, .L3" ^ "\n"
+        | LowOrEqual -> full_asm ^ "\ble a4, a5, .L3" ^ "\n"
+        | MoreOrEqual -> full_asm ^ "\nbge a4, a5, .L3" ^ "\n"
+        | Equal -> full_asm ^ "\beq a4, a5, .L3" ^ "\n"
+        | Unequal -> full_asm ^ "\nbne a4, a5, .L3" ^ "\n"
+        | _ -> failwith "TO DO")
+    | _ -> failwith "TO DO"
+
+  let rec stmt_to_asm s cur_stack_pointer st_stack_pointer count_of_while =
     match s with
     | Expression e1 -> (
         match e1 with
@@ -60,23 +89,37 @@ module Main = struct
         let asm = expr_to_asm e1 cur_stack_pointer st_stack_pointer in
         asm ^ "\nsw a5, -" ^ string_of_int var_pos ^ "(s0)"
     | While (e1, stmt1) ->
-        stmts_to_asm e1 stmt1 cur_stack_pointer st_stack_pointer
+        while_loop_to_asm e1 stmt1 cur_stack_pointer st_stack_pointer
+          count_of_while
     | If (e1, _, _) -> expr_to_asm e1 cur_stack_pointer st_stack_pointer
     | _ -> failwith "TO DO"
 
-  (* and while_loop_to_asm =  *)
+  and while_loop_to_asm e stmt cur_stack_pointer st_stack_pointer count_of_while
+      =
+    count_of_while := !count_of_while + 2;
+    "j .L"
+    ^ string_of_int !count_of_while
+    ^ "\n.L"
+    ^ string_of_int !count_of_while
+    ^ ":\n"
+    ^ parse_of_condition e cur_stack_pointer st_stack_pointer
+    ^ ".L"
+    ^ string_of_int (!count_of_while + 1)
+    ^ ":\n"
+    ^ stmts_to_asm EmptyExpression stmt cur_stack_pointer st_stack_pointer
+        count_of_while
 
-  and stmts_to_asm expression statements cur_stack_pointer st_stack_pointer =
+  and stmts_to_asm expression statements cur_stack_pointer st_stack_pointer
+      count_of_while =
     let e1 = expr_to_asm expression cur_stack_pointer st_stack_pointer in
     List.fold_left
       (fun acc stmt ->
-        acc ^ stmt_to_asm stmt cur_stack_pointer st_stack_pointer)
+        acc ^ stmt_to_asm stmt cur_stack_pointer st_stack_pointer count_of_while)
       e1 statements
 
   (* let file = "bin/first.s"
      let text = ".global _start\n _start:\n"
      let count_of_var = 5
-     let count_of_while = 1
      let count_of_if = 0
      let size_of_buffer = 16 + (count_of_var / 4 * 16)
      let size_of_stack text size_of_buffer =
@@ -99,26 +142,32 @@ module Main = struct
           close_out oc *)
 
   (* "var a := 1; var b := 2; while 10 < 20 do 10 + 12; done var c := 3;" *)
-  let text = "var a := 10;  var b := 20; b := 10 + 20; a := a + (20 + 30) + 40;"
+
+  let text =
+    "var a := 1; while a < 5 do a:= a + 1; done while a < 10 do a:= a + 1; done"
+
   let pos = ref 0
   let shift = ref 0
   let costl = ref 0
   let cur_stack_pointer = ref 16
   let st_stack_pointer = ref 16
+  let count_of_while = ref 0
 
   let () =
     let statements = parse_program text pos in
     variables_shifts := init_variables st_stack_pointer statements;
-    StringMap.iter
-      (fun key value -> print_endline (key ^ ": " ^ string_of_int value))
-      !variables_shifts;
 
-    print_endline "=======";
+    (* StringMap.iter
+       (fun key value -> print_endline (key ^ ": " ^ string_of_int value))
+       !variables_shifts; *)
+
+    (* print_endline "======="; *)
     cur_stack_pointer := !st_stack_pointer;
     List.iter
       (fun stmt ->
-        stmt_to_asm stmt cur_stack_pointer st_stack_pointer |> print_endline)
-      statements;
-    print_endline (string_of_int !cur_stack_pointer);
-    print_endline (string_of_int !st_stack_pointer)
+        stmt_to_asm stmt cur_stack_pointer st_stack_pointer count_of_while
+        |> print_endline)
+      statements
+  (* print_endline (string_of_int !cur_stack_pointer);
+     print_endline (string_of_int !st_stack_pointer) *)
 end
