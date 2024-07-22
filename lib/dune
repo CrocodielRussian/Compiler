@@ -1,3 +1,7 @@
 (library
  (name compiler)
- (modules asm_tree parser))
+ (modules asm_tree parser)
+ (preprocess
+  (pps ppx_deriving.show ppx_deriving.ord))
+ (flags
+  (:standard -dsource)))
