@@ -196,7 +196,7 @@ module Main = struct
       ".if_" ^ string_of_int current_if_index ^ "_else"
     in
     let next_open_label_name = ".L" ^ string_of_int current_open_label_index in
-    ex_asm ^ "\nben a5, zero, " ^ else_branch_label_name ^ "\n" ^ then_stmts_asm
+    ex_asm ^ "\nbeq a5, zero, " ^ else_branch_label_name ^ "\n" ^ then_stmts_asm
     ^ "\nj " ^ next_open_label_name ^ "\n\n" ^ else_branch_label_name ^ ":\n"
     ^ else_stmts_asm ^ "\nj " ^ next_open_label_name ^ "\n\n"
     ^ next_open_label_name ^ ":"
@@ -210,8 +210,7 @@ module Main = struct
       then n := n + 1; else n := n * -1; endif" *)
 
   let text =
-    "var n := 0; if n then if n < 10 then n := n + 10; endif  else n := n * \
-     -1; endif"
+    "var n := 0; if n then if n < 10 then n := n + 10; endif  else n := n * -1;"
 
   let pos = ref 0
   let shift = ref 0
