@@ -10,7 +10,7 @@ module Main = struct
       (fun stmt ->
         match stmt with
         | AssignStatement (v, _) ->
-            cur_stack_pointer := !cur_stack_pointer + 4;
+            cur_stack_pointer := !cur_stack_pointer + 8;
             variables_stack_position :=
               StringMap.add v !cur_stack_pointer !variables_stack_position
         | _ -> ())
@@ -26,11 +26,11 @@ module Main = struct
     | Multiply -> "mulw a5, a4, a5"
     | Divide -> "div a5, a4, a5"
     | More -> "sgt a5, a4, a5"
-    | MoreOrEqual -> binop_to_asm Low ^ "\nxori a5, a5, 1"
+    | MoreOrEqual -> Printf.sprintf "%s\nxori a5, a5, 1" (binop_to_asm Low)
     | Low -> "slt a5, a4, a5"
-    | LowOrEqual -> binop_to_asm More ^ "\nxori a5, a5, 1"
-    | Equal -> binop_to_asm Unequal ^ "\nxori a5, a5, 1"
-    | Unequal -> "sne a5, a4, a5"
+    | LowOrEqual -> Printf.sprintf "%s\nxori a5, a5, 1" (binop_to_asm More)
+    | Equal -> "sub a5, a4, a5\nseqz a5, a5"
+    | Unequal -> Printf.sprintf "%s\nxori a5, a5, 1" (binop_to_asm Equal)
     | Invalid ->
         failwith
           ("ASTError: unexpected binary operator: "
@@ -56,21 +56,20 @@ module Main = struct
         let var_pos = StringMap.find v !variables_shifts in
         let expr_asm = expr_to_asm ex cur_stack_pointer in
         match op with
-        | DefaultAssign ->
-            expr_asm ^ "\nsw a5, -" ^ string_of_int var_pos ^ "(s0)"
+        | DefaultAssign -> Printf.sprintf "%s\nsd a5, -%d(s0)" expr_asm var_pos
         | _ ->
             let op_asm = binop_to_asm (map_assign_op_to_binop op) in
-            expr_asm ^ "\nlw a4, -" ^ string_of_int var_pos ^ "(s0)" ^ "\n"
-            ^ op_asm ^ "\nsw a5, -" ^ string_of_int var_pos ^ "(s0)")
-    | Number n -> "li a5, " ^ string_of_int n
+            Printf.sprintf "%s\nld a4, -%d(s0)\n%s\nsd a5, -%d(s0)" expr_asm
+              var_pos op_asm var_pos)
+    | Number n -> Printf.sprintf "li a5, %d" n
     | Variable v ->
         let var_pos = StringMap.find v !variables_shifts in
-        "lw a5, -" ^ string_of_int var_pos ^ "(s0)"
+        Printf.sprintf "lw a5, -%d(s0)" var_pos
     | Unary (op, ex) -> (
         let ex_asm = expr_to_asm ex cur_stack_pointer in
         match op with
         | Plus -> ex_asm
-        | Minus -> ex_asm ^ "\nneg a5, a5"
+        | Minus -> Printf.sprintf "%s\nneg a5, a5" ex_asm
         | _ ->
             failwith
               ("ASTError: unexpected unary operator: "
@@ -78,53 +77,15 @@ module Main = struct
               ^ "."))
     | Binary (ex1, op, ex2) ->
         let asm1 = expr_to_asm ex1 cur_stack_pointer in
-        cur_stack_pointer := !cur_stack_pointer + 4;
+        cur_stack_pointer := !cur_stack_pointer + 8;
         let asm2 = expr_to_asm ex2 cur_stack_pointer in
         let full_asm =
-          asm1 ^ "\nsw a5, -"
-          ^ string_of_int !cur_stack_pointer
-          ^ "(s0)" ^ "\n" ^ asm2 ^ "\n" ^ "lw a4, -"
-          ^ string_of_int !cur_stack_pointer
-          ^ "(s0)"
+          Printf.sprintf "%s\nsd a5, -%d(s0)\n%s\nld a4, -%d(s0)" asm1
+            !cur_stack_pointer asm2 !cur_stack_pointer
         in
         cur_stack_pointer := !cur_stack_pointer - 4;
-        full_asm ^ "\n" ^ binop_to_asm op
+        Printf.sprintf "%s\n%s" full_asm (binop_to_asm op)
     | EmptyExpression -> "# Empty expression"
-
-  let parse_of_condition e cur_stack_pointer count_of_while =
-    match e with
-    | Binary (ex1, o, ex2) -> (
-        let asm1 = expr_to_asm ex1 cur_stack_pointer in
-        cur_stack_pointer := !cur_stack_pointer + 4;
-        let asm2 = expr_to_asm ex2 cur_stack_pointer in
-        let full_asm =
-          asm1 ^ "\nsw a5, -"
-          ^ string_of_int !cur_stack_pointer
-          ^ "(s0)" ^ "\n" ^ asm2 ^ "\n" ^ "lw a4, -"
-          ^ string_of_int !cur_stack_pointer
-          ^ "(s0)"
-        in
-        match o with
-        | Low ->
-            full_asm ^ "\nblt a4, a5, .while_loop"
-            ^ string_of_int !count_of_while
-        | More ->
-            full_asm ^ "\nbgt a4, a5, .while_loop"
-            ^ string_of_int !count_of_while
-        | LowOrEqual ->
-            full_asm ^ "\ble a4, a5, .while_loop"
-            ^ string_of_int !count_of_while
-        | MoreOrEqual ->
-            full_asm ^ "\nbge a4, a5, .while_loop"
-            ^ string_of_int !count_of_while
-        | Equal ->
-            full_asm ^ "\beq a4, a5, .while_loop"
-            ^ string_of_int !count_of_while
-        | Unequal ->
-            full_asm ^ "\nbne a4, a5, .while_loop"
-            ^ string_of_int !count_of_while
-        | _ -> failwith "TO DO")
-    | _ -> failwith "TO DO"
 
   let rec stmt_to_asm s cur_stack_pointer count_of_while count_of_if
       open_label_count =
@@ -138,10 +99,9 @@ module Main = struct
               ^ string_of_expression ex ex ex
               ^ ";."))
     | AssignStatement (v, ex) ->
-        (* var <v> = <ex>*)
         let var_pos = StringMap.find v !variables_shifts in
         let asm = expr_to_asm ex cur_stack_pointer in
-        asm ^ "\nsw a5, -" ^ string_of_int var_pos ^ "(s0)"
+        Printf.sprintf "%s\nsd a5, -%d(s0)" asm var_pos
     | While (ex, stmts) ->
         while_loop_to_asm ex stmts cur_stack_pointer count_of_while count_of_if
           open_label_count
@@ -155,24 +115,17 @@ module Main = struct
     count_of_while := !count_of_while + 1;
     let cur_while_index = !count_of_while in
     let while_condition_label =
-      ".while_" ^ string_of_int cur_while_index ^ "_condition"
+      Printf.sprintf ".while_%d_condition" cur_while_index
     in
-    let while_loop_label =
-      ".while_" ^ string_of_int cur_while_index ^ "_loop"
-    in
-
+    let while_loop_label = Printf.sprintf ".while_%d_loop" cur_while_index in
     let exp_while = expr_to_asm e cur_stack_pointer in
     let stmts_asm =
       stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
         open_label_count
     in
-
-    "j " ^ while_condition_label ^ "\n\n" ^ while_loop_label ^ ":\n" ^ stmts_asm
-    ^ "\nj " ^ while_condition_label ^ "\n\n" ^ while_condition_label ^ ":\n"
-    ^ exp_while ^ "\nbne a5, zero, " ^ while_loop_label
-  (* ^ stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
-         open_label_count
-     ^ parse_of_condition e cur_stack_pointer count_of_while *)
+    Printf.sprintf "j %s\n\n%s:\n%s\nj %s\n\n%s:\n%s\nbne a5, zero, %s"
+      while_condition_label while_loop_label stmts_asm while_condition_label
+      while_condition_label exp_while while_loop_label
 
   and stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
       open_label_count =
@@ -184,7 +137,7 @@ module Main = struct
             open_label_count
         in
         if String.length stmt_asm > 0 then
-          stmts_asm := !stmts_asm ^ "\n" ^ stmt_asm
+          stmts_asm := Printf.sprintf "%s\n%s" !stmts_asm stmt_asm
         else ())
       stmts;
     !stmts_asm
@@ -205,29 +158,16 @@ module Main = struct
         open_label_count
     in
     let else_branch_label_name =
-      ".if_" ^ string_of_int current_if_index ^ "_else"
+      Printf.sprintf ".if_%d_else" current_if_index
     in
     let next_open_label_name = ".L" ^ string_of_int current_open_label_index in
-    ex_asm ^ "\nbeq a5, zero, " ^ else_branch_label_name ^ "\n" ^ then_stmts_asm
-    ^ "\nj " ^ next_open_label_name ^ "\n\n" ^ else_branch_label_name ^ ":\n"
-    ^ else_stmts_asm ^ "\nj " ^ next_open_label_name ^ "\n\n"
-    ^ next_open_label_name ^ ":"
+    Printf.sprintf "%s\nbeq a5, zero, %s\n%s\nj %s\n\n%s:\n%s\nj %s\n\n%s:"
+      ex_asm else_branch_label_name then_stmts_asm next_open_label_name
+      else_branch_label_name else_stmts_asm next_open_label_name
+      next_open_label_name
 
-  (* let text = "var a := 1; var b := 2; while 10 < 20 do 10 + 12; done var c := 3;" *)
-
-  (* let text = "var n := 1; while n < 2 do n := n + -1; done" *)
-
-  (* let text =
-     "var n := 1; if n < 2 then n := n + -1; else n := n - 1; endif if n < 2 \
-      then n := n + 1; else n := n * -1; endif" *)
-
-  let text =
-    "var n := 10; var b := 10; while n > 10 do while  b < 20 do if b / 2 == 0 \
-     then b += 2; else b += 4; endif done n += 1; done"
-
+  let text = "var a := 10; if a > 20 then a := 10; else a += 40; endif"
   let pos = ref 0
-  let shift = ref 0
-  let costl = ref 0
   let cur_stack_pointer = ref 16
   let st_stack_pointer = ref 16
   let count_of_while = ref 0
@@ -236,54 +176,31 @@ module Main = struct
 
   let () =
     let statements = parse_program text pos in
-    (* print_endline (string_of_statements text pos statements); *)
     variables_shifts := init_variables st_stack_pointer statements;
-
-    (* StringMap.iter
-         (fun key value -> print_endline (key ^ ": " ^ string_of_int value))
-         !variables_shifts;
-
-       print_endline "======="; *)
-    print_endline
-      ".global _start\n\
-       _start:\n\
-       addi sp, sp, -32\n\
-       sd s0, 24(sp)\n\
-       addi s0, sp, 32\n\
-       # START CODE";
+    let space_stack = 32 + (16 * (!cur_stack_pointer / 8)) in
+    let start_code =
+      Printf.sprintf
+        ".global _start\n\
+         _start:\n\
+         addi sp, sp, -%d\n\
+         sd s0, %d(sp)\n\
+         addi s0, sp, %d\n\
+         # START CODE" space_stack (space_stack - 16) space_stack
+    in
+    print_endline start_code;
     cur_stack_pointer := !st_stack_pointer;
     List.iter
       (fun stmt ->
-        stmt_to_asm stmt cur_stack_pointer count_of_while count_of_if
-          open_label_count
-        |> print_endline)
-      statements
-
-  let end_call =
-    print_endline
-      "# END CODE\naddi sp, sp, 32\nli a0, 0\nmv a5, a0\nli a7, 93\necall"
+        let stmt_asm =
+          stmt_to_asm stmt cur_stack_pointer count_of_while count_of_if
+            open_label_count
+        in
+        print_endline stmt_asm)
+      statements;
+    let end_code =
+      Printf.sprintf
+        "# END CODE\naddi sp, sp, %d\nli a0, 0\nmv a5, a0\nli a7, 93\necall"
+        space_stack
+    in
+    print_endline end_code
 end
-
-(* let file = "bin/first.s"
-     let text = ".global _start\n _start:\n"
-     let count_of_var = 5
-     let count_of_if = 0
-     let size_of_buffer = 16 + (count_of_var / 4 * 16)
-     let size_of_stack text size_of_buffer =
-          text ^ "addi sp, sp, -"
-          ^ string_of_int size_of_buffer
-          ^ "\n" ^ "sd s0, "
-          ^ string_of_int (size_of_buffer - 8)
-          ^ "(sp)" ^ "\n" ^ "addi s0, sp,"
-          ^ string_of_int size_of_buffer
-          ^ "\n"
-
-        let text = size_of_stack text size_of_buffer
-        let start = 20
-
-        (* let add_var_in_stack =  *)
-
-        let () =
-          let oc = open_out file in
-          Printf.fprintf oc "%s\n" text;
-          close_out oc *)
