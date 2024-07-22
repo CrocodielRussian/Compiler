@@ -166,8 +166,10 @@ module Main = struct
       else_branch_label_name else_stmts_asm next_open_label_name
       next_open_label_name
 
-  let text = "var a := 10; if a > 20 then a := 10; else a += 40; endif"
-  let pos = ref 0
+  let text =
+    "var a := 10; var b := 20; var c := 20; var d := 20; var e := 20; if a > \
+     20 then a += 1; else a += 10; endif"
+
   let cur_stack_pointer = ref 16
   let st_stack_pointer = ref 16
   let count_of_while = ref 0
@@ -175,9 +177,9 @@ module Main = struct
   let open_label_count = ref 0
 
   let () =
-    let statements = parse_program text pos in
+    let statements = parse_program text in
     variables_shifts := init_variables st_stack_pointer statements;
-    let space_stack = 32 + (16 * (!cur_stack_pointer / 8)) in
+    let space_stack = 16 + !st_stack_pointer in
     let start_code =
       Printf.sprintf
         ".global _start\n\
@@ -185,7 +187,7 @@ module Main = struct
          addi sp, sp, -%d\n\
          sd s0, %d(sp)\n\
          addi s0, sp, %d\n\
-         # START CODE" space_stack (space_stack - 16) space_stack
+         # START CODE" space_stack (space_stack - 8) space_stack
     in
     print_endline start_code;
     cur_stack_pointer := !st_stack_pointer;

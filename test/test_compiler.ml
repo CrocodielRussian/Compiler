@@ -208,7 +208,7 @@ let string_parse_cases =
          done\n\
          \t"
       in
-      let build = build_statement text parse_program in
+      let build = parse_program text in
       test_string_of_ast build
         "var acc := 1;\n\
          var n := 6;\n\
@@ -221,7 +221,7 @@ let string_parse_cases =
       let text =
         "var a:=0; var b:=1; var n:=5; while n>1 do b:=a+b;a:=b-a;n:=n-1;done"
       in
-      let build = build_statement text parse_program in
+      let build = parse_program text in
       test_string_of_ast build
         "var a := 0;\n\
          var b := 1;\n\

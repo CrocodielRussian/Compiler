@@ -505,6 +505,7 @@ and parse_statements text pos check =
 
 let check_program_end text pos = !pos < String.length text
 
-let parse_program text pos =
+let parse_program text =
+  let pos = ref 0 in
   initialised_variables := StringSet.of_list [];
   parse_statements text pos check_program_end
