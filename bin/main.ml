@@ -60,8 +60,8 @@ module Main = struct
             expr_asm ^ "\nsw a5, -" ^ string_of_int var_pos ^ "(s0)"
         | _ ->
             let op_asm = binop_to_asm (map_assign_op_to_binop op) in
-            expr_asm ^ "\nlw a4, -" ^ string_of_int var_pos ^ "(s0)" ^ op_asm
-            ^ "\nsw a5, -" ^ string_of_int var_pos ^ "(s0)")
+            expr_asm ^ "\nlw a4, -" ^ string_of_int var_pos ^ "(s0)" ^ "\n"
+            ^ op_asm ^ "\nsw a5, -" ^ string_of_int var_pos ^ "(s0)")
     | Number n -> "li a5, " ^ string_of_int n
     | Variable v ->
         let var_pos = StringMap.find v !variables_shifts in
@@ -153,27 +153,39 @@ module Main = struct
   and while_loop_to_asm e stmts cur_stack_pointer count_of_while count_of_if
       open_label_count =
     count_of_while := !count_of_while + 1;
-    "j .while_condition_"
-    ^ string_of_int !count_of_while
-    ^ "\n\n" ^ ".while_loop_"
-    ^ string_of_int !count_of_while
-    ^ ":\n"
-    ^ stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
+    let cur_while_index = !count_of_while in
+    let while_condition_label =
+      ".while_" ^ string_of_int cur_while_index ^ "_condition"
+    in
+    let while_loop_label =
+      ".while_" ^ string_of_int cur_while_index ^ "_loop"
+    in
+
+    let exp_while = expr_to_asm e cur_stack_pointer in
+    let stmts_asm =
+      stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
         open_label_count
-    ^ "\n\n.while_condition_"
-    ^ string_of_int !count_of_while
-    ^ ":\n"
-    ^ parse_of_condition e cur_stack_pointer count_of_while
+    in
+
+    "j " ^ while_condition_label ^ "\n\n" ^ while_loop_label ^ ":\n" ^ stmts_asm
+    ^ "\nj " ^ while_condition_label ^ "\n\n" ^ while_condition_label ^ ":\n"
+    ^ exp_while ^ "\nbne a5, zero, " ^ while_loop_label
+  (* ^ stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
+         open_label_count
+     ^ parse_of_condition e cur_stack_pointer count_of_while *)
 
   and stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
       open_label_count =
     let stmts_asm = ref "" in
     List.iter
       (fun stmt ->
-        stmts_asm :=
-          !stmts_asm
-          ^ stmt_to_asm stmt cur_stack_pointer count_of_while count_of_if
-              open_label_count)
+        let stmt_asm =
+          stmt_to_asm stmt cur_stack_pointer count_of_while count_of_if
+            open_label_count
+        in
+        if String.length stmt_asm > 0 then
+          stmts_asm := !stmts_asm ^ "\n" ^ stmt_asm
+        else ())
       stmts;
     !stmts_asm
 
@@ -210,7 +222,8 @@ module Main = struct
       then n := n + 1; else n := n * -1; endif" *)
 
   let text =
-    "var n := 0; if n then if n < 10 then n := n + 10; endif  else n := n * -1;"
+    "var n := 10; var b := 10; while n > 10 do while  b < 20 do if b / 2 == 0 \
+     then b += 2; else b += 4; endif done n += 1; done"
 
   let pos = ref 0
   let shift = ref 0
@@ -223,6 +236,7 @@ module Main = struct
 
   let () =
     let statements = parse_program text pos in
+    (* print_endline (string_of_statements text pos statements); *)
     variables_shifts := init_variables st_stack_pointer statements;
 
     (* StringMap.iter
