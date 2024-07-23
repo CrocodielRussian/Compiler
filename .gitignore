@@ -4,4 +4,5 @@ target/
 compiler.opam
 !lang/stdlib/*.s
 lang/*.s
+*.s
 *.exe

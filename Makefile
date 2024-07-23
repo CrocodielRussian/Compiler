@@ -8,7 +8,6 @@ TARGET_DIR = target/
 PROGRAM_NAME = program.exe
 
 all:
-	eval $(opam env)
 	dune exec compiler
 	mkdir -p $(TARGET_DIR)
 	make run
