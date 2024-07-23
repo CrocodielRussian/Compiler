@@ -1,9 +1,12 @@
 open Compiler.Riscv_translator
 
 module Main = struct
-  let text =
-    "var a := 10; var b := 20; var c := 20; var d := 20; var e := 20; if a > \
-     20 then a += 1; else a += 10; endif"
+  let text = "var a:= 12; while a > 0 do a /= 2; done a-=-a;"
 
-  let () = asm_translator text
+  let () =
+    let file = "lang/main.s" in
+    let asm_code = asm_translator text in
+    let oc = open_out file in
+    Printf.fprintf oc "%s\n" asm_code;
+    close_out oc
 end

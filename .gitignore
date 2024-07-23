@@ -1,4 +1,7 @@
 _build
 .vscode
+target/
 compiler.opam
-!lang/*.s
+!lang/stdlib/*.s
+lang/*.s
+*.exe
