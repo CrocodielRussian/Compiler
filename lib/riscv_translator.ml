@@ -171,16 +171,16 @@ let asm_translator text =
   let statements = parse_program text in
   variables_shifts := init_variables st_stack_pointer statements;
   let space_stack = 16 + !st_stack_pointer in
-  let start_code =
-    Printf.sprintf
-      ".global _start\n\
-       _start:\n\
-       addi sp, sp, -%d\n\
-       sd s0, %d(sp)\n\
-       addi s0, sp, %d\n\
-       # START CODE" space_stack (space_stack - 8) space_stack
+  let start_method_code =
+    ref
+      (Printf.sprintf
+         ".global _start\n\
+          _start:\n\
+          addi sp, sp, -%d\n\
+          sd s0, %d(sp)\n\
+          addi s0, sp, %d\n\
+          # START CODE" space_stack (space_stack - 8) space_stack)
   in
-  print_endline start_code;
   cur_stack_pointer := !st_stack_pointer;
   List.iter
     (fun stmt ->
@@ -188,11 +188,11 @@ let asm_translator text =
         stmt_to_asm stmt cur_stack_pointer count_of_while count_of_if
           open_label_count
       in
-      print_endline stmt_asm)
+      start_method_code := Printf.sprintf "%s\n%s" !start_method_code stmt_asm)
     statements;
   let end_code =
     Printf.sprintf
       "# END CODE\naddi sp, sp, %d\nli a0, 0\nmv a5, a0\nli a7, 93\necall"
       space_stack
   in
-  print_endline end_code
+  Printf.sprintf "%s\n%s" !start_method_code end_code
