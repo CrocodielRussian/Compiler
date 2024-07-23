@@ -1,5 +1,4 @@
 _build
 .vscode
 compiler.opam
-**.txt
-**.s
+!lang/*.s
