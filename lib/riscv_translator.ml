@@ -1,4 +1,5 @@
 open Parser
+open Optimiator
 module StringMap = Map.Make (String)
 
 let init_variables (cur_stack_pointer : int ref) (statements : statement list) =
@@ -168,7 +169,7 @@ let count_of_if = ref 0
 let open_label_count = ref 0
 
 let asm_translator text =
-  let statements = parse_program text in
+  let statements = optimize_ast (parse_program text) in
   variables_shifts := init_variables st_stack_pointer statements;
   let space_stack = 16 + !st_stack_pointer in
   let start_method_code =

@@ -1,7 +1,8 @@
 open Compiler.Riscv_translator
 
 module Main = struct
-  let text = "var a:= 12; while a > 0 do a /= 2; done a-=-a;"
+  let text =
+    "var a:= -12 * +10 - 10 / 10 + 10; while a > 0 do a /= (a + -2); done"
 
   let () =
     let file = "lang/main.s" in
