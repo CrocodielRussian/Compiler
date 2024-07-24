@@ -7,7 +7,10 @@ let eval_binary_operation (n1 : int) (op : oper) (n2 : int) =
   | Plus -> Number (n1 + n2)
   | Minus -> Number (n1 - n2)
   | Multiply -> Number (n1 * n2)
-  | Divide -> Number (n1 / n2)
+  | Divide -> (
+      match n2 with
+      | 0 -> failwith "LogicError: divide by zero"
+      | _ -> Number (n1 / n2))
   | Low -> Number (bool_to_int (n1 < n2))
   | LowOrEqual -> Number (bool_to_int (n1 <= n2))
   | More -> Number (bool_to_int (n1 > n2))
@@ -62,15 +65,20 @@ and optimize_expr (ex : expr) =
   | Binary (subex1, op, subex2) -> optimize_binary_expr subex1 op subex2
   | _ -> ex
 
-let optimize_stmt (stmt : statement) =
+let rec optimize_stmt (stmt : statement) =
   match stmt with
   | Expression ex -> Expression (optimize_expr ex)
   | AssignStatement (v, ex) -> AssignStatement (v, optimize_expr ex)
+  | While (ex, stmts) -> While (optimize_expr ex, optimize_stmts stmts)
   | _ -> stmt
+
+and optimize_stmts (stmts : statement list) : statement list =
+  let new_stmts = ref [] in
+  List.iter (fun stmt -> new_stmts := !new_stmts @ [ optimize_stmt stmt ]) stmts;
+  !new_stmts
 
 let optimize_ast (ast : statement list) : statement list =
   print_endline (string_of_statements "" 0 ast);
-  let new_ast = ref [] in
-  List.iter (fun stmt -> new_ast := !new_ast @ [ optimize_stmt stmt ]) ast;
-  print_endline (string_of_statements "" 0 !new_ast);
-  !new_ast
+  let new_ast = optimize_stmts ast in
+  print_endline (string_of_statements "" 0 new_ast);
+  new_ast
