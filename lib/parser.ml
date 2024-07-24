@@ -29,13 +29,13 @@ type expr =
   | Number of int (* 12 *)
   | Unary of oper * expr (* -12 *)
   | Binary of expr * oper * expr (* 14  + 12 *)
-  | AssignExpression of string * assign_oper * expr
+  | AssignExpression of string * assign_oper * expr (* a := 10*)
   | EmptyExpression
 [@@deriving show]
 
 type statement =
   | Expression of expr
-  | AssignStatement of string * expr
+  | AssignStatement of string * expr (* a := 10 + 20;*)
   | EmptyStatement
   | While of expr * statement list
   | If of expr * statement list * statement list
