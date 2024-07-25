@@ -263,7 +263,3 @@ and asm_tree stmts cur_stack_pointer =
   let cur_structure = Function ("_start", !list_of_instr, !variables_shifts) in
   all := !all @ [ cur_structure ];
   !all
-
-(* let show = show_structure (List.nth show_res 0) |> print_endline *)
-
-(* let s = [%yojson_of: int M.t] m |> Yojson.Safe.to_string *)
