@@ -136,7 +136,7 @@ let string_of_ast_cases =
                Expression (AssignExpression ("b", DivideAssign, Number 2));
                Expression (AssignExpression ("c", DivideAssign, Number 2));
              ] ))
-        "while (a < b) do\n(c /= 2);\n(b /= 2);\n(a /= 2);\ndone"
+        "while (a < b) do\n(a /= 2);\n(b /= 2);\n(c /= 2);\ndone"
         (fun ast -> string_of_statement "" 0 ast) );
     ( "Big while loop statement: 'while a < b do a /= 2; b:=b-1; done'",
       `Quick,
@@ -149,7 +149,7 @@ let string_of_ast_cases =
                  (AssignExpression
                     ("b", DefaultAssign, Binary (Variable "b", Minus, Number 1)));
              ] ))
-        "while (a < b) do\n(b := (b - 1));\n(a /= 2);\ndone"
+        "while (a < b) do\n(a /= 2);\n(b := (b - 1));\ndone"
         (fun ast -> string_of_statement "" 0 ast) );
     ( "if statement: 'if a < b then a /= 2; else b -= a; endif'",
       `Quick,
@@ -171,7 +171,7 @@ let string_of_ast_cases =
                Expression (AssignExpression ("b", MinusAssign, Variable "a"));
              ],
              [ EmptyStatement ] ))
-        "if (a < b) then\n(b -= a);\n(a /= 2);\nendif"
+        "if (a < b) then\n(a /= 2);\n(b -= a);\nendif"
         (fun ast -> string_of_statement "" 0 ast) );
   ]
 
