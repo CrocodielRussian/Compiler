@@ -42,6 +42,11 @@ type structure = Function of string * instr list * mp
 (* [@@deriving show] *)
 
 let variables_shifts : int StringMap.t ref = ref StringMap.empty
+let cur_stack_pointer = ref 16
+let st_stack_pointer = ref 16
+let count_of_while = ref 0
+let count_of_if = ref 0
+let open_label_count = ref 0
 
 let init_variables (cur_stack_pointer : int ref) (statements : statement list) =
   let variables_stack_position : int StringMap.t ref = ref StringMap.empty in
@@ -93,16 +98,11 @@ let binop_to_asm op reg1 reg2 =
 let rec expr_to_asm e cur_stack_pointer variables_shifts =
   match e with
   | AssignExpression (v, op, ex) -> (
-      print_endline "dff";
       let var_pos = StringMap.find v !variables_shifts in
-      print_endline "sd";
       let expr_asm = expr_to_asm ex cur_stack_pointer variables_shifts in
       match op with
-      | DefaultAssign ->
-          print_endline "ss";
-          expr_asm @ [ Sd (A 5, var_pos) ]
+      | DefaultAssign -> expr_asm @ [ Sd (A 5, var_pos) ]
       | _ ->
-          print_endline "ssd";
           let search_oper = map_assign op in
           let op_asm = binop_to_asm search_oper (A 5) (A 4) in
           expr_asm @ [] @ op_asm)
@@ -179,15 +179,17 @@ and while_loop_to_asm e stmts cur_stack_pointer count_of_while count_of_if
     Printf.sprintf ".while_%d_condition" cur_while_index
   in
   let while_loop_label = Printf.sprintf ".while_%d_loop" cur_while_index in
-  let exp_while = expr_to_asm e cur_stack_pointer variables_shifts in
-  let stmts_asm =
+  let while_condition =
+    expr_to_asm e cur_stack_pointer variables_shifts @ [ J while_loop_label ]
+  in
+  let while_loop =
     stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
       open_label_count variables_shifts
+    @ [ J while_condition_label ]
   in
-
-  [
-    Label (while_loop_label, stmts_asm); Label (while_condition_label, exp_while);
-  ]
+  [ J while_condition_label ]
+  @ [ Label (while_loop_label, while_loop) ]
+  @ [ Label (while_condition_label, while_condition) ]
 
 and if_stmt_to_asm ex then_stmts else_stmts cur_stack_pointer count_of_while
     count_of_if open_label_count variables_shifts =
@@ -195,6 +197,8 @@ and if_stmt_to_asm ex then_stmts else_stmts cur_stack_pointer count_of_while
   incr open_label_count;
   let current_open_label_index = !count_of_if in
   let current_if_index = !count_of_if in
+  let else_branch_label_name = Printf.sprintf ".if_%d_else" current_if_index in
+  let next_open_label_name = ".L" ^ string_of_int current_open_label_index in
   let ex_asm = expr_to_asm ex cur_stack_pointer variables_shifts in
   let then_stmts_asm =
     stmts_to_asm then_stmts cur_stack_pointer count_of_while count_of_if
@@ -203,49 +207,13 @@ and if_stmt_to_asm ex then_stmts else_stmts cur_stack_pointer count_of_while
   let else_stmts_asm =
     stmts_to_asm else_stmts cur_stack_pointer count_of_while count_of_if
       open_label_count variables_shifts
+    @ [ J next_open_label_name ]
   in
-
-  let else_branch_label_name = Printf.sprintf ".if_%d_else" current_if_index in
-  let next_open_label_name = ".L" ^ string_of_int current_open_label_index in
   ex_asm
   @ [ Beq (A 5, ZERO, else_branch_label_name) ]
   @ then_stmts_asm @ [ J next_open_label_name ]
   @ [ Label (else_branch_label_name, else_stmts_asm) ]
-  @ [ J next_open_label_name ]
   @ [ Label (next_open_label_name, []) ]
-
-let cur_stack_pointer = ref 16
-let st_stack_pointer = ref 16
-let count_of_while = ref 0
-let count_of_if = ref 0
-let open_label_count = ref 0
-
-let rec asm_stmt stmt list_of_instr cur_stack_pointer variables_shifts =
-  match stmt with
-  | Expression ex ->
-      let result = expr_to_asm ex cur_stack_pointer variables_shifts in
-      list_of_instr := !list_of_instr @ result
-  | AssignStatement (_, ex) ->
-      let result = expr_to_asm ex cur_stack_pointer variables_shifts in
-      list_of_instr := !list_of_instr @ result
-  | While (e, stmts) ->
-      let result = expr_to_asm e cur_stack_pointer variables_shifts in
-      list_of_instr := !list_of_instr @ result;
-      let loop_stmts =
-        while_loop_to_asm e stmts cur_stack_pointer count_of_while count_of_if
-          open_label_count variables_shifts
-      in
-      list_of_instr := !list_of_instr @ loop_stmts
-  | If (e, if_stmts, else_stmts) ->
-      let result = expr_to_asm e cur_stack_pointer variables_shifts in
-      list_of_instr := !list_of_instr @ result;
-      let if_then_statement =
-        if_stmt_to_asm e if_stmts else_stmts cur_stack_pointer count_of_while
-          count_of_if open_label_count variables_shifts
-      in
-      list_of_instr := !list_of_instr @ if_then_statement
-  | EmptyStatement ->
-      list_of_instr := !list_of_instr @ [ Comment "# Empty Statement" ]
 
 and asm_tree stmts cur_stack_pointer =
   let all = ref ([] : structure list) in
@@ -257,9 +225,11 @@ and asm_tree stmts cur_stack_pointer =
        (fun key value -> print_endline (key ^ ": " ^ string_of_int value))
        !variables_shifts;
      print_endline "====="; *)
-  List.iter
-    (fun stmt -> asm_stmt stmt list_of_instr cur_stack_pointer variables_shifts)
-    stmts;
+  list_of_instr :=
+    stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
+      open_label_count variables_shifts;
+  List.iter (fun instr -> show_instr instr |> print_endline) !list_of_instr;
+
   let cur_structure = Function ("_start", !list_of_instr, !variables_shifts) in
   all := !all @ [ cur_structure ];
   !all
