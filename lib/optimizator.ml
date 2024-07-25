@@ -38,7 +38,7 @@ let constants_compression (op : oper) (expressions : expr list) : expr list =
 
 let pop_front = function [] -> [] | _ :: tl -> tl
 
-let deep_optimize_binary_expr (ex1 : expr) (op : oper) (ex2 : expr) : expr =
+let rec deep_optimize_binary_expr (ex1 : expr) (op : oper) (ex2 : expr) : expr =
   match op with
   | Plus | Multiply ->
       let operands = ref [] in
@@ -61,14 +61,15 @@ let deep_optimize_binary_expr (ex1 : expr) (op : oper) (ex2 : expr) : expr =
         result_expr := Binary (!result_expr, op, ex)
       done;
       !result_expr
+  | Minus -> deep_optimize_binary_expr ex1 Plus (optimize_unary_expr Minus ex2)
   | _ -> Binary (ex1, op, ex2)
 
-let optimize_left_expr (const : int) (op : oper) (subex2 : expr) =
+and optimize_left_expr (const : int) (op : oper) (subex2 : expr) =
   match subex2 with
   | Number n2 -> Number (eval_binary_operation const op n2)
   | _ -> deep_optimize_binary_expr (Number const) op subex2
 
-let rec optimize_unary_expr (op : oper) (subex : expr) =
+and optimize_unary_expr (op : oper) (subex : expr) =
   let optisubex = optimize_expr subex in
   match op with
   | Plus -> optisubex
