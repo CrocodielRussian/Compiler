@@ -1,5 +1,5 @@
 open Parser
-open Optimiator
+open Optimizator
 module StringMap = Map.Make (String)
 
 let init_variables (cur_stack_pointer : int ref) (statements : statement list) =
