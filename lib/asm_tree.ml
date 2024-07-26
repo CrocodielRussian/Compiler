@@ -1,5 +1,4 @@
 open Parser
-module StringMap = Map.Make (String)
 
 type reg =
   | TemporaryReg of int
@@ -136,6 +135,7 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
           subex_asm_tree
           @ [ Ld (TemporaryReg 1, var_stack_position) ]
           @ op_asm_tree @ save_result_asm_tree)
+  | FuncCall (_, _) -> []
   | EmptyExpression -> []
 
 let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
@@ -149,7 +149,7 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
       | _ ->
           failwith
             ("ASTError: unsupported  expression statement: "
-            ^ string_of_expression ex ex ex
+            ^ string_of_expression 0 0 ex
             ^ ";."))
   | AssignStatement (v, ex) ->
       let var_stack_position = StringMap.find v !variables_stack_position in

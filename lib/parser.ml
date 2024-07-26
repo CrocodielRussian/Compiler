@@ -1,4 +1,5 @@
 module StringSet = Set.Make (String)
+module StringMap = Map.Make (String)
 
 type oper =
   | Plus
@@ -30,6 +31,7 @@ type expr =
   | Unary of oper * expr (* -12 *)
   | Binary of expr * oper * expr (* 14  + 12 *)
   | AssignExpression of string * assign_oper * expr (* a := 10*)
+  | FuncCall of string * expr list (* func(a, b, a + b) *)
   | EmptyExpression
 [@@deriving show]
 
@@ -39,6 +41,9 @@ type statement =
   | EmptyStatement
   | While of expr * statement list
   | If of expr * statement list * statement list
+[@@deriving show]
+
+type structure = FuncStruct of string * string list * statement list * expr
 [@@deriving show]
 
 let string_of_unary_operator = function
@@ -90,6 +95,14 @@ let rec string_of_expression text pos = function
       ^ " "
       ^ string_of_expression text pos e
       ^ ")"
+  | FuncCall (n, expressions) ->
+      let expressions_string = ref [] in
+      List.iter
+        (fun ex ->
+          expressions_string :=
+            !expressions_string @ [ string_of_expression 0 0 ex ])
+        expressions;
+      Printf.sprintf "%s(%s)" n (String.concat ", " !expressions_string)
   | EmptyExpression -> ""
 
 let rec string_of_statements text pos stmts =
@@ -126,9 +139,17 @@ and string_of_statement text pos = function
         ^ "\nendif"
 
 let initialised_variables = ref (StringSet.of_list [])
+let initialised_functions = ref (StringSet.of_list [ "print_int" ])
+
+let functions_args_count : int StringMap.t ref =
+  ref StringMap.(empty |> add "print_int" 1)
+
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
 let is_whitespace = function ' ' | '\r' | '\t' | '\n' -> true | _ -> false
+
+let expect_symbol text pos symbol =
+  if pos >= 0 && pos < String.length text then text.[pos] == symbol else false
 
 let skip_whitespaces text pos =
   let length = String.length text in
@@ -152,7 +173,9 @@ let positive_number text pos =
 
 let identifier text pos =
   let acc = ref "" in
-  while !pos < String.length text && is_alpha text.[!pos] do
+  while
+    !pos < String.length text && (is_alpha text.[!pos] || '_' = text.[!pos])
+  do
     acc := !acc ^ String.make 1 text.[!pos];
     incr pos
   done;
@@ -189,9 +212,6 @@ let check_expr_stmt_close text pos expression =
     failwith
       ("Parser Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find close symbol of expression statement: ';'.")
-
-let expect_symbol text pos symbol =
-  if pos >= 0 && pos < String.length text then text.[pos] == symbol else false
 
 let parse_assign_operation text pos =
   skip_whitespaces text pos;
@@ -363,13 +383,55 @@ and parse_simplest_expr text pos =
             ("Parse Error: on position " ^ (!pos |> string_of_int)
            ^ " couldn't find symbol of closed bracket: ')'.")
     | '0' .. '9' -> positive_number text pos
-    | 'a' .. 'z' | 'A' .. 'Z' -> variable text pos
+    | 'a' .. 'z' | 'A' .. 'Z' ->
+        let ident = identifier text pos in
+        if StringSet.mem ident !initialised_functions then
+          parse_func_call ident text pos
+        else (
+          pos := !pos - String.length ident;
+          variable text pos)
     | _ ->
         failwith
           ("ParseError: on position " ^ (!pos |> string_of_int)
          ^ " unexpected symbol: '"
           ^ Char.escaped text.[!pos]
           ^ "'.")
+
+and parse_func_call ident text pos =
+  skip_whitespaces text pos;
+  let symbol = text.[!pos] in
+  match symbol with
+  | '(' -> (
+      incr pos;
+      skip_whitespaces text pos;
+      let func_args_expr : expr list ref = ref [] in
+      let expected_args_count =
+        ref (StringMap.find ident !functions_args_count)
+      in
+      while text.[!pos] != ')' || !expected_args_count = 0 do
+        let arg = parse_expr text pos in
+        match arg with
+        | EmptyExpression ->
+            failwith
+              ("ParseError: on position " ^ (!pos |> string_of_int)
+             ^ " couldn't  find argument.")
+        | _ -> func_args_expr := !func_args_expr @ [ arg ]
+      done;
+      skip_whitespaces text pos;
+      match expect_symbol text !pos ')' with
+      | true ->
+          incr pos;
+          FuncCall (ident, !func_args_expr)
+      | false ->
+          failwith
+            ("ParseError: on position " ^ (!pos |> string_of_int)
+           ^ " couldn't find symbol of closed bracket for close function '"
+           ^ ident ^ "' call: ')'."))
+  | _ ->
+      failwith
+        ("ParseError: on position " ^ (!pos |> string_of_int)
+       ^ " couldn't find symbol of open bracket of function call: '('. Find \
+          symbol: '" ^ Char.escaped symbol ^ "'.")
 
 let parse_expr_statement text pos =
   skip_whitespaces text pos;

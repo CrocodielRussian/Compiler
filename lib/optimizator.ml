@@ -98,6 +98,7 @@ and optimize_expr (ex : expr) =
   | AssignExpression (v, op, subex) ->
       AssignExpression (v, op, optimize_expr subex)
   | Binary (subex1, op, subex2) -> optimize_binary_expr subex1 op subex2
+  | FuncCall (_, _) -> ex
   | EmptyExpression -> ex
 
 let rec optimize_stmt (stmt : statement) =
@@ -115,7 +116,7 @@ and optimize_stmts (stmts : statement list) : statement list =
   !new_stmts
 
 let optimize_ast (ast : statement list) : statement list =
-  print_endline (string_of_statements "" 0 ast);
+  print_endline (string_of_statements 0 0 ast);
   let new_ast = optimize_stmts ast in
-  print_endline (string_of_statements "" 0 new_ast);
+  print_endline (string_of_statements 0 0 new_ast);
   new_ast

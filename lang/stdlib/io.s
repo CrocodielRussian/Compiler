@@ -4,13 +4,13 @@
 
 .text
 .global _print_number
-# args[a0 - int to print, a1 - output stream]
+# args[a0 - int to print]
 _print_number:
     addi sp, sp, -40        # create stack space
     sd s0, 32(sp)           # store frame pointer
     addi s0, sp, 40         # new frame pointer
 
-    mv t6, a1               # chache output stream
+    la t6, STDOUT           # chache output stream
 
     li t0, 0                # init sign bit
     li t1, 10               # divisor and new-line char
