@@ -85,7 +85,6 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
   | Number n -> [ Li (ArgumentReg 0, n) ]
   | Variable v ->
       let var_stack_position = StringMap.find v !variables_stack_position in
-      print_endline (string_of_int var_stack_position);
       [ Ld (ArgumentReg 0, var_stack_position) ]
   | Unary (op, subex) -> (
       let subex_asm_tree =
