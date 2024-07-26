@@ -76,66 +76,66 @@ let string_of_assign_operator = function
   | InvalidAssing -> "?=?"
 [@@deriving show]
 
-let rec string_of_expression text pos = function
+let rec string_of_expression = function
   | Variable n -> n
   | Number n -> string_of_int n
   | Unary (op, e) ->
-      string_of_unary_operator op ^ "(" ^ string_of_expression text pos e ^ ")"
+      string_of_unary_operator op ^ "(" ^ string_of_expression e ^ ")"
   | Binary (e1, op, e2) ->
       "("
-      ^ string_of_expression text pos e1
+      ^ string_of_expression e1
       ^ " "
       ^ string_of_binary_operator op
       ^ " "
-      ^ string_of_expression text pos e2
+      ^ string_of_expression e2
       ^ ")"
   | AssignExpression (v, op, e) ->
       "(" ^ v ^ " "
       ^ string_of_assign_operator op
       ^ " "
-      ^ string_of_expression text pos e
+      ^ string_of_expression e
       ^ ")"
   | FuncCall (n, expressions) ->
       let expressions_string = ref [] in
       List.iter
         (fun ex ->
           expressions_string :=
-            !expressions_string @ [ string_of_expression 0 0 ex ])
+            !expressions_string @ [ string_of_expression ex ])
         expressions;
       Printf.sprintf "%s(%s)" n (String.concat ", " !expressions_string)
   | EmptyExpression -> ""
 
-let rec string_of_statements text pos stmts =
+let rec string_of_statements stmts =
   let str_lst =
-    List.map (fun stmt -> string_of_statement text pos stmt) stmts
+    List.map (fun stmt -> string_of_statement stmt) stmts
   in
   String.concat "\n" str_lst
 
-and string_of_statement text pos = function
+and string_of_statement = function
   | EmptyStatement -> ""
-  | Expression e -> string_of_expression text pos e ^ ";"
+  | Expression e -> string_of_expression e ^ ";"
   | AssignStatement (v, e2) ->
-      "var " ^ v ^ " := " ^ string_of_expression text pos e2 ^ ";"
+      "var " ^ v ^ " := " ^ string_of_expression e2 ^ ";"
   | While (e1, stmts) ->
       "while "
-      ^ string_of_expression text pos e1
+      ^ string_of_expression e1
       ^ " do\n"
-      ^ string_of_statements text pos stmts
+      ^ string_of_statements stmts
       ^ "\ndone"
   | If (e1, if_stmts, else_stmts) ->
       if else_stmts = [ EmptyStatement ] then
         "if "
-        ^ string_of_expression text pos e1
+        ^ string_of_expression e1
         ^ " then\n"
-        ^ string_of_statements text pos if_stmts
+        ^ string_of_statements if_stmts
         ^ "\nendif"
       else
         "if "
-        ^ string_of_expression text pos e1
+        ^ string_of_expression e1
         ^ " then\n"
-        ^ string_of_statements text pos if_stmts
+        ^ string_of_statements if_stmts
         ^ "\nelse\n"
-        ^ string_of_statements text pos else_stmts
+        ^ string_of_statements else_stmts
         ^ "\nendif"
 
 let initialised_variables = ref (StringSet.of_list [])

@@ -149,7 +149,7 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
       | _ ->
           failwith
             ("ASTError: unsupported  expression statement: "
-            ^ string_of_expression 0 0 ex
+            ^ string_of_expression ex
             ^ ";."))
   | AssignStatement (v, ex) ->
       let var_stack_position = StringMap.find v !variables_stack_position in

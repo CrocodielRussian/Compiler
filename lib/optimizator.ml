@@ -116,7 +116,7 @@ and optimize_stmts (stmts : statement list) : statement list =
   !new_stmts
 
 let optimize_ast (ast : statement list) : statement list =
-  print_endline (string_of_statements 0 0 ast);
+  print_endline (string_of_statements ast);
   let new_ast = optimize_stmts ast in
-  print_endline (string_of_statements 0 0 new_ast);
+  print_endline (string_of_statements new_ast);
   new_ast

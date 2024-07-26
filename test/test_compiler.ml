@@ -9,11 +9,11 @@ let string_of_ast_cases =
     ( "Simple expression: 'a'",
       `Quick,
       test_string_of_ast (Variable "a") "a" (fun ast ->
-          string_of_expression 0 0 ast) );
+          string_of_expression ast) );
     ( "Simple expression: '10'",
       `Quick,
       test_string_of_ast (Number 10) "10" (fun ast ->
-          string_of_expression 0 0 ast) );
+          string_of_expression ast) );
     ( "Math expression: '10 + a / (34 * -23 - 90)'",
       `Quick,
       test_string_of_ast
@@ -28,7 +28,7 @@ let string_of_ast_cases =
                      Minus,
                      Number 90 ) ) ))
         "(10 + (a / ((34 * -(23)) - 90)))"
-        (fun ast -> string_of_expression 0 0 ast) );
+        (fun ast -> string_of_expression ast) );
     ( "Compare expression: '10 != a <= (34 * 23 > -90)'",
       `Quick,
       test_string_of_ast
@@ -43,7 +43,7 @@ let string_of_ast_cases =
                      More,
                      Unary (Minus, Number 90) ) ) ))
         "(10 != (a <= ((34 * 23) > -(90))))"
-        (fun ast -> string_of_expression 0 0 ast) );
+        (fun ast -> string_of_expression ast) );
     ( "Assign expression: 'a := -(b := 5) < 90'",
       `Quick,
       test_string_of_ast
@@ -55,11 +55,11 @@ let string_of_ast_cases =
                  Low,
                  Number 90 ) ))
         "(a := (-((b := 5)) < 90))"
-        (fun ast -> string_of_expression 0 0 ast) );
+        (fun ast -> string_of_expression ast) );
     ( "Expression statement: '10;'",
       `Quick,
       test_string_of_ast (Expression (Number 10)) "10;" (fun ast ->
-          string_of_statement 0 0 ast) );
+          string_of_statement ast) );
     ( "Math statement: '10 + a / (34 * -23 - 90);'",
       `Quick,
       test_string_of_ast
@@ -75,7 +75,7 @@ let string_of_ast_cases =
                         Minus,
                         Number 90 ) ) )))
         "(10 + (a / ((34 * -(23)) - 90)));"
-        (fun ast -> string_of_statement 0 0 ast) );
+        (fun ast -> string_of_statement ast) );
     ( "Compare statement: '10 != a <= (34 * 23 > -90);'",
       `Quick,
       test_string_of_ast
@@ -91,7 +91,7 @@ let string_of_ast_cases =
                         More,
                         Unary (Minus, Number 90) ) ) )))
         "(10 != (a <= ((34 * 23) > -(90))));"
-        (fun ast -> string_of_statement 0 0 ast) );
+        (fun ast -> string_of_statement ast) );
     ( "Assign expression statement: 'a := -(b := 5) < 90;'",
       `Quick,
       test_string_of_ast
@@ -105,7 +105,7 @@ let string_of_ast_cases =
                     Low,
                     Number 90 ) )))
         "(a := (-((b := 5)) < 90));"
-        (fun ast -> string_of_statement 0 0 ast) );
+        (fun ast -> string_of_statement ast) );
     ( "Variable init statement: 'var a := -(b := 5) < 90;'",
       `Quick,
       test_string_of_ast
@@ -116,7 +116,7 @@ let string_of_ast_cases =
                  Low,
                  Number 90 ) ))
         "var a := (-((b := 5)) < 90);"
-        (fun ast -> string_of_statement 0 0 ast) );
+        (fun ast -> string_of_statement ast) );
     ( "While loop statement: 'while a < b do a /= 2; done'",
       `Quick,
       test_string_of_ast
@@ -124,7 +124,7 @@ let string_of_ast_cases =
            ( Binary (Variable "a", Low, Variable "b"),
              [ Expression (AssignExpression ("a", DivideAssign, Number 2)) ] ))
         "while (a < b) do\n(a /= 2);\ndone"
-        (fun ast -> string_of_statement 0 0 ast) );
+        (fun ast -> string_of_statement ast) );
     ( "While loop statement with several statements: 'while a < b do a /= 2; b \
        /= 2; c/=2; done'",
       `Quick,
@@ -137,7 +137,7 @@ let string_of_ast_cases =
                Expression (AssignExpression ("c", DivideAssign, Number 2));
              ] ))
         "while (a < b) do\n(a /= 2);\n(b /= 2);\n(c /= 2);\ndone"
-        (fun ast -> string_of_statement 0 0 ast) );
+        (fun ast -> string_of_statement ast) );
     ( "Big while loop statement: 'while a < b do a /= 2; b:=b-1; done'",
       `Quick,
       test_string_of_ast
@@ -150,7 +150,7 @@ let string_of_ast_cases =
                     ("b", DefaultAssign, Binary (Variable "b", Minus, Number 1)));
              ] ))
         "while (a < b) do\n(a /= 2);\n(b := (b - 1));\ndone"
-        (fun ast -> string_of_statement 0 0 ast) );
+        (fun ast -> string_of_statement ast) );
     ( "if statement: 'if a < b then a /= 2; else b -= a; endif'",
       `Quick,
       test_string_of_ast
@@ -160,7 +160,7 @@ let string_of_ast_cases =
              [ Expression (AssignExpression ("b", MinusAssign, Variable "a")) ]
            ))
         "if (a < b) then\n(a /= 2);\nelse\n(b -= a);\nendif"
-        (fun ast -> string_of_statement 0 0 ast) );
+        (fun ast -> string_of_statement ast) );
     ( "if statement without else: 'if a < b then a /= 2; b -= a; endif'",
       `Quick,
       test_string_of_ast
@@ -172,7 +172,7 @@ let string_of_ast_cases =
              ],
              [ EmptyStatement ] ))
         "if (a < b) then\n(a /= 2);\n(b -= a);\nendif"
-        (fun ast -> string_of_statement 0 0 ast) );
+        (fun ast -> string_of_statement ast) );
   ]
 
 let build_statement text parse_func =
@@ -186,7 +186,7 @@ let string_parse_cases =
       let text = "10 + 90 / (34 * -23 + 90) < 3;" in
       let build = build_statement text parse_expr_statement in
       test_string_of_ast build "((10 + (90 / ((34 * -(23)) + 90))) < 3);"
-        (fun ast -> string_of_statement 0 0 ast) );
+        (fun ast -> string_of_statement ast) );
     ( "Simple program",
       `Quick,
       let text =
@@ -197,7 +197,7 @@ let string_parse_cases =
       in
       test_string_of_ast build
         "var a := 10;\nvar b := 15;\n(b -= a);\n(a /= b);" (fun ast ->
-          string_of_statements 0 0 ast) );
+          string_of_statements ast) );
     ( "Factorial program",
       `Quick,
       let text =
@@ -215,7 +215,7 @@ let string_parse_cases =
          while (n > 1) do\n\
          (acc := (acc * n));\n\
          (n := (n - 1));\n\
-         done\n" (fun ast -> string_of_statements 0 0 ast) );
+         done\n" (fun ast -> string_of_statements ast) );
     ( "Fibonachi program",
       `Quick,
       let text =
@@ -230,7 +230,7 @@ let string_parse_cases =
          (b := (a + b));\n\
          (a := (b - a));\n\
          (n := (n - 1));\n\
-         done" (fun ast -> string_of_statements 0 0 ast) );
+         done" (fun ast -> string_of_statements ast) );
   ]
 
 let () =
