@@ -1,6 +1,6 @@
 (library
  (name compiler)
- (modules asm_tree riscv_translator parser)
+ (modules asm_tree riscv_translator optimizator parser)
  (preprocess
   (pps ppx_deriving.show ppx_deriving.ord))
  (flags

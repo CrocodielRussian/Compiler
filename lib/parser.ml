@@ -163,124 +163,182 @@ let variable text pos =
   let acc = identifier text pos in
   if String.length acc > 0 then
     if StringSet.mem acc !initialised_variables then Variable acc
-    else
+    else (
+      prerr_endline "<";
       failwith
         ("LogicError: on position " ^ string_of_int !pos
-       ^ " find undound variable: '" ^ acc ^ "'.")
+       ^ " find undound variable: '" ^ acc ^ "'."))
   else
     failwith
       ("Parser Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find variable.")
 
-let parse_added_operation = function '+' -> Plus | '-' -> Minus | _ -> Invalid
-
-let parse_mult_operation = function
-  | '*' -> Multiply
-  | '/' -> Divide
-  | _ -> Invalid
-
-let parse_assgn_operation text pos =
+let check_exists_simple_stmt_close text pos =
   skip_whitespaces text pos;
-  let len = String.length text in
-  let check_substring sub =
-    let sub_len = String.length sub in
-    !pos + sub_len <= len && String.sub text !pos sub_len = sub
-  in
-  let eval_op_assing = function
-    | ":=" -> DefaultAssign
-    | "+=" -> PlusAssign
-    | "-=" -> MinusAssign
-    | "*=" -> MultiplyAssign
-    | "/=" -> DivideAssign
+  if !pos < String.length text then
+    match text.[!pos] with
+    | ';' ->
+        incr pos;
+        true
+    | _ -> false
+  else false
+
+let check_expr_stmt_close text pos expression =
+  if check_exists_simple_stmt_close text pos then Expression expression
+  else
+    failwith
+      ("Parser Error: on position " ^ (!pos |> string_of_int)
+     ^ " couldn't find close symbol of expression statement: ';'.")
+
+let expect_symbol text pos symbol =
+  if pos >= 0 && pos < String.length text then text.[pos] == symbol else false
+
+let parse_assign_operation text pos =
+  skip_whitespaces text pos;
+  if !pos + 2 > String.length text then InvalidAssing
+  else
+    match String.sub text !pos 2 with
+    | ":=" ->
+        pos := !pos + 2;
+        DefaultAssign
+    | "+=" ->
+        pos := !pos + 2;
+        PlusAssign
+    | "-=" ->
+        pos := !pos + 2;
+        MinusAssign
+    | "/=" ->
+        pos := !pos + 2;
+        DivideAssign
+    | "*=" ->
+        pos := !pos + 2;
+        MultiplyAssign
     | _ -> InvalidAssing
-  in
-  if
-    check_substring ":=" || check_substring "+=" || check_substring "-="
-    || check_substring "*=" || check_substring "/="
-  then (
-    pos := !pos + 2;
-    eval_op_assing (String.sub text (!pos - 2) 2))
-  else InvalidAssing
 
 let parse_compare_operation text pos =
   skip_whitespaces text pos;
-  let len = String.length text in
-  let check_substring sub =
-    let sub_len = String.length sub in
-    !pos + sub_len <= len && String.sub text !pos sub_len = sub
-  in
-  let eval_op_compare = function
-    | ">=" -> MoreOrEqual
-    | "<=" -> LowOrEqual
-    | "==" -> Equal
-    | "!=" -> Unequal
-    | ">" -> More
-    | "<" -> Low
+  if !pos < 0 || !pos >= String.length text then Invalid
+  else
+    let symbol = text.[!pos] in
+    match symbol with
+    | '>' | '<' -> (
+        if expect_symbol text (!pos + 1) '=' then
+          match symbol with
+          | '<' ->
+              pos := !pos + 2;
+              LowOrEqual
+          | '>' ->
+              pos := !pos + 2;
+              MoreOrEqual
+          | _ -> Invalid
+        else
+          match symbol with
+          | '<' ->
+              incr pos;
+              Low
+          | '>' ->
+              incr pos;
+              More
+          | _ -> Invalid)
+    | '!' | '=' ->
+        if expect_symbol text (!pos + 1) '=' then
+          match symbol with
+          | '!' ->
+              pos := !pos + 2;
+              LowOrEqual
+          | '=' ->
+              pos := !pos + 2;
+              MoreOrEqual
+          | _ -> Invalid
+        else
+          failwith
+            ("Parser Error: on position " ^ (!pos |> string_of_int)
+           ^ " find unexpected compare operator.")
     | _ -> Invalid
-  in
-  if
-    check_substring ">=" || check_substring "<=" || check_substring "=="
-    || check_substring "!="
-  then (
-    pos := !pos + 2;
-    eval_op_compare (String.sub text (!pos - 2) 2))
-  else if check_substring ">" || check_substring "<" then (
-    incr pos;
-    eval_op_compare (String.sub text (!pos - 1) 1))
-  else Invalid
+
+let parse_adding_operation text pos =
+  skip_whitespaces text pos;
+  if !pos < 0 || !pos >= String.length text then Invalid
+  else
+    let symbol = text.[!pos] in
+    match symbol with
+    | '+' | '-' -> (
+        if expect_symbol text (!pos + 1) '=' then Invalid
+        else
+          match symbol with
+          | '+' ->
+              incr pos;
+              Plus
+          | '-' ->
+              incr pos;
+              Minus
+          | _ -> Invalid)
+    | _ -> Invalid
+
+let parse_multiply_operation text pos =
+  skip_whitespaces text pos;
+  if !pos < 0 || !pos >= String.length text then Invalid
+  else
+    let symbol = text.[!pos] in
+    match symbol with
+    | '*' | '/' -> (
+        if expect_symbol text (!pos + 1) '=' then Invalid
+        else
+          match symbol with
+          | '*' ->
+              incr pos;
+              Multiply
+          | '/' ->
+              incr pos;
+              Divide
+          | _ -> Invalid)
+    | _ -> Invalid
 
 let rec parse_expr text pos =
   skip_whitespaces text pos;
-  let head = parse_math_expr text pos in
-  skip_whitespaces text pos;
-  if !pos >= String.length text then head
-  else
-    match head with
-    | Variable name -> parse_assign_expr name text pos
-    | _ -> parse_compare_expr head text pos
+  let start_pos = !pos in
+  let expression = parse_math_expr text pos in
+  match expression with
+  | Variable v -> (
+      let operation = parse_assign_operation text pos in
+      match operation with
+      | InvalidAssing ->
+          pos := start_pos;
+          parse_compare_expr text pos
+      | _ -> AssignExpression (v, operation, parse_expr text pos))
+  | _ ->
+      pos := start_pos;
+      parse_compare_expr text pos
 
-and parse_compare_expr head text pos =
+and parse_compare_expr text pos =
   skip_whitespaces text pos;
-  let operation = parse_compare_operation text pos in
-  if operation != Invalid then Binary (head, operation, parse_expr text pos)
-  else head
-
-and parse_assign_expr name text pos =
-  skip_whitespaces text pos;
-  let operation = parse_assgn_operation text pos in
-  if operation = InvalidAssing then parse_compare_expr (Variable name) text pos
-  else if StringSet.mem name !initialised_variables then
-    AssignExpression (name, operation, parse_expr text pos)
-  else
-    failwith
-      ("LogicError: on position " ^ string_of_int !pos
-     ^ " find undound variable: '" ^ name ^ "'.")
+  let expression = ref (parse_math_expr text pos) in
+  let operation = ref (parse_compare_operation text pos) in
+  while !pos < String.length text && !operation != Invalid do
+    expression := Binary (!expression, !operation, parse_math_expr text pos);
+    operation := parse_compare_operation text pos
+  done;
+  !expression
 
 and parse_math_expr text pos =
   skip_whitespaces text pos;
-  let head = parse_mult_expr text pos in
-  skip_whitespaces text pos;
-  if !pos >= String.length text then head
-  else
-    let operation = parse_added_operation text.[!pos] in
-    if !pos + 1 < String.length text && text.[!pos + 1] = '=' then head
-    else if operation != Invalid then (
-      incr pos;
-      Binary (head, operation, parse_math_expr text pos))
-    else head
+  let expression = ref (parse_mult_expr text pos) in
+  let operation = ref (parse_adding_operation text pos) in
+  while !pos < String.length text && !operation != Invalid do
+    expression := Binary (!expression, !operation, parse_mult_expr text pos);
+    operation := parse_adding_operation text pos
+  done;
+  !expression
 
 and parse_mult_expr text pos =
   skip_whitespaces text pos;
-  let head = parse_simplest_expr text pos in
-  skip_whitespaces text pos;
-  if !pos >= String.length text then head
-  else
-    let operation = parse_mult_operation text.[!pos] in
-    if !pos + 1 < String.length text && text.[!pos + 1] = '=' then head
-    else if operation != Invalid then (
-      incr pos;
-      Binary (head, operation, parse_mult_expr text pos))
-    else head
+  let expression = ref (parse_simplest_expr text pos) in
+  let operation = ref (parse_multiply_operation text pos) in
+  while !pos < String.length text && !operation != Invalid do
+    expression := Binary (!expression, !operation, parse_simplest_expr text pos);
+    operation := parse_multiply_operation text pos
+  done;
+  !expression
 
 and parse_simplest_expr text pos =
   skip_whitespaces text pos;
@@ -308,27 +366,10 @@ and parse_simplest_expr text pos =
     | 'a' .. 'z' | 'A' .. 'Z' -> variable text pos
     | _ ->
         failwith
-          ("Parse Error: on position " ^ (!pos |> string_of_int)
+          ("ParseError: on position " ^ (!pos |> string_of_int)
          ^ " unexpected symbol: '"
           ^ Char.escaped text.[!pos]
           ^ "'.")
-
-let check_exists_simple_stmt_close text pos =
-  skip_whitespaces text pos;
-  if !pos < String.length text then
-    match text.[!pos] with
-    | ';' ->
-        incr pos;
-        true
-    | _ -> false
-  else false
-
-let check_expr_stmt_close text pos expression =
-  if check_exists_simple_stmt_close text pos then Expression expression
-  else
-    failwith
-      ("Parser Error: on position " ^ (!pos |> string_of_int)
-     ^ " couldn't find close symbol of expression statement: ';'.")
 
 let parse_expr_statement text pos =
   skip_whitespaces text pos;

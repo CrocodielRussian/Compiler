@@ -10,5 +10,9 @@ module Main = struct
     let instructions = program_to_asm_tree (parse_program text) in
     List.iter
       (fun instruction -> print_endline (show_instr instruction))
-      instructions
+      instructions;
+    let asm_code = asm_translator text in
+    let oc = open_out file in
+    Printf.fprintf oc "%s\n" asm_code;
+    close_out oc
 end
