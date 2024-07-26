@@ -11,23 +11,24 @@ let string_of_reg (register : reg) =
 
 let string_of_instr (instruction : instr) =
   match instruction with
-  | Li (r, n) -> Printf.sprintf "li\t%s %d" (string_of_reg r) n
-  | Ld (r, n) -> Printf.sprintf "ld\t%s %d" (string_of_reg r) n
-  | Sd (r, n) -> Printf.sprintf "sd\t%s %d" (string_of_reg r) n
-  | Mv (r1, r2) -> Printf.sprintf "mv\t%s %s" (string_of_reg r1) (string_of_reg r2)
-  | Neg (r1, r2) -> Printf.sprintf "neg\t%s %s" (string_of_reg r1) (string_of_reg r2)
-  | Add (r1, r2, r3)  -> Printf.sprintf "add\t%s %s %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
-  | Mul (r1, r2, r3)  -> Printf.sprintf "mul\t%s %s %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
-  | Sub (r1, r2, r3)  -> Printf.sprintf "sub\t%s %s %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
-  | Div (r1, r2, r3)  -> Printf.sprintf "div\t%s %s %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
-  | Sgt (r1, r2, r3)  -> Printf.sprintf "sgt\t%s %s %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
-  | Slt (r1, r2, r3)  -> Printf.sprintf "slt\t%s %s %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
-  | Xori (r1, r2, n)  -> Printf.sprintf "xori\t%s %s %d" (string_of_reg r1) (string_of_reg r2) n
-  | Seqz (r1, r2) -> Printf.sprintf "segz\t%s %s" (string_of_reg r1) (string_of_reg r2)
-  | Beq (r1, r2, l)  -> Printf.sprintf "beq\t%s %s %s" (string_of_reg r1) (string_of_reg r2) l
-  | Bne (r1, r2, l)  -> Printf.sprintf "bne\t%s %s %s" (string_of_reg r1) (string_of_reg r2) l
+  | Li (r, n) -> Printf.sprintf "li\t%s, %d" (string_of_reg r) n
+  | Ld (r, n) -> Printf.sprintf "ld\t%s, %d(fp)" (string_of_reg r) (~-n)
+  | Sd (r, n) -> Printf.sprintf "sd\t%s, %d(fp)" (string_of_reg r) (~-n)
+  | Mv (r1, r2) -> Printf.sprintf "mv\t%s, %s" (string_of_reg r1) (string_of_reg r2)
+  | Neg (r1, r2) -> Printf.sprintf "neg\t%s, %s" (string_of_reg r1) (string_of_reg r2)
+  | Add (r1, r2, r3)  -> Printf.sprintf "add\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
+  | Mul (r1, r2, r3)  -> Printf.sprintf "mul\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
+  | Sub (r1, r2, r3)  -> Printf.sprintf "sub\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
+  | Div (r1, r2, r3)  -> Printf.sprintf "div\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
+  | Sgt (r1, r2, r3)  -> Printf.sprintf "sgt\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
+  | Slt (r1, r2, r3)  -> Printf.sprintf "slt\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
+  | Xori (r1, r2, n)  -> Printf.sprintf "xori\t%s, %s, %d" (string_of_reg r1) (string_of_reg r2) n
+  | Seqz (r1, r2) -> Printf.sprintf "segz\t%s, %s" (string_of_reg r1) (string_of_reg r2)
+  | Beq (r1, r2, l)  -> Printf.sprintf "beq\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) l
+  | Bne (r1, r2, l)  -> Printf.sprintf "bne\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) l
   | Label l -> Printf.sprintf "%s:" l
   | Jump l -> Printf.sprintf "j\t%s" l
+  | Call l -> Printf.sprintf "call\t%s" l
 
 let string_of_instr_list (instr_list : instr list) = 
   let all = ref [] in

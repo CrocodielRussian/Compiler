@@ -28,6 +28,7 @@ type instr =
   | Bne of reg * reg * string
   | Label of string
   | Jump of string
+  | Call of string
 [@@deriving show]
 
 type structure = Function of string * instr list * int StringMap.t
@@ -81,17 +82,18 @@ let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
 let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
     (variables_stack_position : int StringMap.t ref) : instr list =
   match ex with
-  | Number n -> [ Li (TemporaryReg 0, n) ]
+  | Number n -> [ Li (ArgumentReg 0, n) ]
   | Variable v ->
       let var_stack_position = StringMap.find v !variables_stack_position in
-      [ Ld (TemporaryReg 0, var_stack_position) ]
+      print_endline (string_of_int var_stack_position);
+      [ Ld (ArgumentReg 0, var_stack_position) ]
   | Unary (op, subex) -> (
       let subex_asm_tree =
         expr_to_asm_tree subex stack_pointer variables_stack_position
       in
       match op with
       | Plus -> subex_asm_tree
-      | Minus -> subex_asm_tree @ [ Neg (TemporaryReg 0, TemporaryReg 0) ]
+      | Minus -> subex_asm_tree @ [ Neg (ArgumentReg 0, ArgumentReg 0) ]
       | _ ->
           failwith
             ("ASTError: unexpected unary operator: "
@@ -108,19 +110,19 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
       in
       let ex_eval_asm_tree =
         subex1_asm_tree
-        @ [ Sd (TemporaryReg 0, !stack_pointer) ]
+        @ [ Sd (ArgumentReg 0, !stack_pointer) ]
         @ subex2_asm_tree
-        @ [ Ld (TemporaryReg 1, !stack_pointer) ]
+        @ [ Ld (ArgumentReg 1, !stack_pointer) ]
       in
       stack_pointer := !stack_pointer - 8;
       (*TODO: MagicNumber: 8. It is word byte-size in 64bits RISC-V) *)
-      ex_eval_asm_tree @ binop_to_asm op (TemporaryReg 0) (TemporaryReg 1)
+      ex_eval_asm_tree @ binop_to_asm op (ArgumentReg 0) (ArgumentReg 1)
   | AssignExpression (v, op, subex) -> (
       let var_stack_position = StringMap.find v !variables_stack_position in
       let subex_asm_tree =
         expr_to_asm_tree subex stack_pointer variables_stack_position
       in
-      let save_result_asm_tree = [ Sd (TemporaryReg 0, var_stack_position) ] in
+      let save_result_asm_tree = [ Sd (ArgumentReg 0, var_stack_position) ] in
       match op with
       | DefaultAssign -> subex_asm_tree @ save_result_asm_tree
       | InvalidAssing ->
@@ -130,12 +132,32 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
             ^ ".")
       | _ ->
           let op_asm_tree =
-            binop_to_asm (map_assign op) (TemporaryReg 0) (TemporaryReg 1)
+            binop_to_asm (map_assign op) (ArgumentReg 0) (ArgumentReg 1)
           in
           subex_asm_tree
-          @ [ Ld (TemporaryReg 1, var_stack_position) ]
+          @ [ Ld (ArgumentReg 1, var_stack_position) ]
           @ op_asm_tree @ save_result_asm_tree)
-  | FuncCall (_, _) -> []
+  | FuncCall (name, expressions) -> 
+
+    let all_instr = ref [] in 
+    if List.length expressions = 1 then (expr_to_asm_tree (List.nth expressions 0) stack_pointer variables_stack_position @ [Call name]) else ( 
+    List.iter(fun exp -> 
+      all_instr := !all_instr @ (expr_to_asm_tree exp stack_pointer variables_stack_position );
+      stack_pointer := !stack_pointer + 8;
+      all_instr := !all_instr @ [Sd (ArgumentReg 0, !stack_pointer)]
+      )
+      (List.rev expressions);
+    let length = ref( List.length expressions) in
+    let regInd = ref 0 in
+    while !length > 0 && !regInd < 8 do (
+    decr length; 
+    all_instr := !all_instr @ [Ld(ArgumentReg !regInd, !stack_pointer)];
+    incr regInd;
+    stack_pointer := !stack_pointer - 8;
+    
+    ) done;
+    stack_pointer := !stack_pointer - 8 * !length;
+    !all_instr @ [Call name])
   | EmptyExpression -> []
 
 let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
@@ -144,9 +166,11 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
   match stmt with
   | Expression ex -> (
       match ex with
-      | AssignExpression (_, _, _) ->
+        | AssignExpression (_, _, _) ->
           expr_to_asm_tree ex stack_pointer variables_stack_position
-      | _ ->
+        | FuncCall (_, _)  -> 
+          expr_to_asm_tree ex stack_pointer variables_stack_position
+        | _ ->
           failwith
             ("ASTError: unsupported  expression statement: "
             ^ string_of_expression ex
@@ -156,7 +180,7 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
       let subex_asm_tree =
         expr_to_asm_tree ex stack_pointer variables_stack_position
       in
-      subex_asm_tree @ [ Sd (TemporaryReg 0, var_stack_position) ]
+      subex_asm_tree @ [ Sd (ArgumentReg 0, var_stack_position) ]
   | While (ex, stmts) ->
       while_loop_to_asm ex stmts stack_pointer variables_stack_position
         label_count
@@ -184,7 +208,7 @@ and while_loop_to_asm (ex : expr) (stmts : statement list)
   @ while_loop_stmts_asm_tree
   @ [ Jump while_condition_label_name; Label while_condition_label_name ]
   @ while_condition_expr_tree
-  @ [ Bne (TemporaryReg 0, Zero, while_loop_label_name) ]
+  @ [ Bne (ArgumentReg 0, Zero, while_loop_label_name) ]
 
 and if_stmt_to_asm (ex : expr) (then_stmts : statement list)
     (else_stmts : statement list) (stack_pointer : int ref)
@@ -207,7 +231,7 @@ and if_stmt_to_asm (ex : expr) (then_stmts : statement list)
   let else_branch_label_name = Printf.sprintf ".if_%d_else" current_if_index in
   let next_open_label_name = ".L" ^ string_of_int result_label_index in
   ex_asm_tree
-  @ [ Beq (TemporaryReg 0, Zero, else_branch_label_name) ]
+  @ [ Beq (ArgumentReg 0, Zero, else_branch_label_name) ]
   @ then_stmts_asm_tree
   @ [ Jump next_open_label_name; Label else_branch_label_name ]
   @ else_stmts_asm_tree
