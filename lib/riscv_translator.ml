@@ -1,5 +1,4 @@
-open Compiler.Parser
-open Compiler.Asm_tree
+open Parser
 module StringMap = Map.Make (String)
 
 let init_variables (cur_stack_pointer : int ref) (statements : statement list) =

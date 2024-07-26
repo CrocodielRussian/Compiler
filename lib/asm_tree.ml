@@ -1,25 +1,18 @@
 open Parser
-(* open Sexplib *)
-
 module StringMap = Map.Make (String)
 
-(* [@@deriving sexp] *)
-(* [@@deriving show] *)
-type mp = int StringMap.t
-(* [@@print
-     fun pp fmt map ->
-       Format.fprintf fmt "@[<v>{";
-       iter (fun key value -> Format.fprintf fmt "@ %s -> %d;@ " key value) map;
-       Format.fprintf fmt "@]}"]
-   [@@deriving show] *)
-
-type reg = ZERO | SP | RA | V | GP | TP | T of int | A of int | S of int
+type reg =
+  | TemporaryReg of int
+  | ArgumentReg of int
+  | CallSafetyReg of int
+  | FramePointer
+  | StackPointer
+  | ReturnAddress
+  | Zero
 [@@deriving show]
 
 type instr =
-  | J of string
   | Li of reg * int
-  | La of reg * reg
   | Ld of reg * int
   | Sd of reg * int
   | Mv of reg * reg
@@ -33,17 +26,16 @@ type instr =
   | Xori of reg * reg * int
   | Seqz of reg * reg
   | Beq of reg * reg * string
-  | Label of string * instr list
+  | Bne of reg * reg * string
   | Comment of string
-  | InvalidInstruction
+  | Label of string
+  | Jump of string
 [@@deriving show]
 
-type structure = Function of string * instr list * mp
-(* [@@deriving show] *)
+type structure = Function of string * instr list * int StringMap.t
 
-let variables_shifts : int StringMap.t ref = ref StringMap.empty
-
-let init_variables (cur_stack_pointer : int ref) (statements : statement list) =
+let init_variables (cur_stack_pointer : int ref) (statements : statement list) :
+    int StringMap.t =
   let variables_stack_position : int StringMap.t ref = ref StringMap.empty in
   List.iter
     (fun stmt ->
@@ -56,7 +48,7 @@ let init_variables (cur_stack_pointer : int ref) (statements : statement list) =
     statements;
   !variables_stack_position
 
-let map_assign op =
+let map_assign (op : assign_oper) : oper =
   match op with
   | DefaultAssign -> Invalid
   | PlusAssign -> Plus
@@ -69,7 +61,7 @@ let map_assign op =
         ^ string_of_assign_operator op
         ^ ".")
 
-let binop_to_asm op reg1 reg2 =
+let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
   match op with
   | Plus -> [ Add (reg1, reg2, reg1) ]
   | Minus -> [ Sub (reg1, reg2, reg1) ]
@@ -87,183 +79,162 @@ let binop_to_asm op reg1 reg2 =
         ("ASTError: unexpected binary operator: "
         ^ string_of_binary_operator op
         ^ ".")
-(* Printf.sprintf "%s\nld a4, -%d(s0)\n%s\nsd a5, -%d(s0)" expr_asm
-    var_pos op_asm var_pos) *)
 
-let rec expr_to_asm e cur_stack_pointer variables_shifts =
-  match e with
-  | AssignExpression (v, op, ex) -> (
-      print_endline "dff";
-      let var_pos = StringMap.find v !variables_shifts in
-      print_endline "sd";
-      let expr_asm = expr_to_asm ex cur_stack_pointer variables_shifts in
-      match op with
-      | DefaultAssign ->
-          print_endline "ss";
-          expr_asm @ [ Sd (A 5, var_pos) ]
-      | _ ->
-          print_endline "ssd";
-          let search_oper = map_assign op in
-          let op_asm = binop_to_asm search_oper (A 5) (A 4) in
-          expr_asm @ [] @ op_asm)
-  | Number n -> [ Li (A 5, n) ]
+let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
+    (variables_stack_position : int StringMap.t ref) : instr list =
+  match ex with
+  | Number n -> [ Li (TemporaryReg 0, n) ]
   | Variable v ->
-      let var_pos = StringMap.find v !variables_shifts in
-      [ Ld (A 5, var_pos) ]
-  | Unary (op, ex) -> (
-      let ex_asm = expr_to_asm ex cur_stack_pointer variables_shifts in
+      let var_stack_position = StringMap.find v !variables_stack_position in
+      [ Ld (TemporaryReg 0, var_stack_position) ]
+  | Unary (op, subex) -> (
+      let subex_asm_tree =
+        expr_to_asm_tree subex stack_pointer variables_stack_position
+      in
       match op with
-      | Plus -> ex_asm
-      | Minus -> ex_asm @ [ Neg (A 5, A 5) ]
+      | Plus -> subex_asm_tree
+      | Minus -> subex_asm_tree @ [ Neg (TemporaryReg 0, TemporaryReg 0) ]
       | _ ->
           failwith
             ("ASTError: unexpected unary operator: "
             ^ string_of_binary_operator op
             ^ "."))
-  | Binary (ex1, op, ex2) ->
-      let asm1 = expr_to_asm ex1 cur_stack_pointer variables_shifts in
-      cur_stack_pointer := !cur_stack_pointer + 8;
-      let asm2 = expr_to_asm ex2 cur_stack_pointer variables_shifts in
-      let full_asm =
-        asm1
-        @ [ Sd (A 5, !cur_stack_pointer); Ld (A 4, !cur_stack_pointer) ]
-        @ asm2
+  | Binary (subex1, op, subex2) ->
+      let subex1_asm_tree =
+        expr_to_asm_tree subex1 stack_pointer variables_stack_position
       in
-      cur_stack_pointer := !cur_stack_pointer - 4;
-      full_asm @ binop_to_asm op (A 5) (A 4)
-  | EmptyExpression -> [ Comment "# Empty expression" ]
+      stack_pointer := !stack_pointer + 8;
+      (*TODO: MagicNumber: 8. It is word byte-size in 64bits RISC-V) *)
+      let subex2_asm_tree =
+        expr_to_asm_tree subex2 stack_pointer variables_stack_position
+      in
+      let ex_eval_asm_tree =
+        subex1_asm_tree
+        @ [ Sd (TemporaryReg 0, !stack_pointer) ]
+        @ subex2_asm_tree
+        @ [ Ld (TemporaryReg 1, !stack_pointer) ]
+      in
+      stack_pointer := !stack_pointer - 8;
+      (*TODO: MagicNumber: 8. It is word byte-size in 64bits RISC-V) *)
+      ex_eval_asm_tree @ binop_to_asm op (TemporaryReg 0) (TemporaryReg 1)
+  | AssignExpression (v, op, subex) -> (
+      let var_stack_position = StringMap.find v !variables_stack_position in
+      let subex_asm_tree =
+        expr_to_asm_tree subex stack_pointer variables_stack_position
+      in
+      let save_result_asm_tree = [ Sd (TemporaryReg 0, var_stack_position) ] in
+      match op with
+      | DefaultAssign -> subex_asm_tree @ save_result_asm_tree
+      | InvalidAssing ->
+          failwith
+            ("ASTError: unexpected assign operator: "
+            ^ string_of_assign_operator op
+            ^ ".")
+      | _ ->
+          let op_asm_tree =
+            binop_to_asm (map_assign op) (TemporaryReg 0) (TemporaryReg 1)
+          in
+          subex_asm_tree
+          @ [ Ld (TemporaryReg 1, var_stack_position) ]
+          @ op_asm_tree @ save_result_asm_tree)
+  | EmptyExpression -> []
 
-let rec stmt_to_asm s cur_stack_pointer count_of_while count_of_if
-    open_label_count variables_shifts =
-  match s with
+let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
+    (variables_stack_position : int StringMap.t ref) (label_count : int ref) :
+    instr list =
+  match stmt with
   | Expression ex -> (
       match ex with
       | AssignExpression (_, _, _) ->
-          expr_to_asm ex cur_stack_pointer variables_shifts
+          expr_to_asm_tree ex stack_pointer variables_stack_position
       | _ ->
           failwith
             ("ASTError: unsupported  expression statement: "
             ^ string_of_expression ex ex ex
             ^ ";."))
   | AssignStatement (v, ex) ->
-      let var_pos = StringMap.find v !variables_shifts in
-      let asm = expr_to_asm ex cur_stack_pointer variables_shifts in
-      asm @ [ Sd (A 5, var_pos) ]
+      let var_stack_position = StringMap.find v !variables_stack_position in
+      let subex_asm_tree =
+        expr_to_asm_tree ex stack_pointer variables_stack_position
+      in
+      subex_asm_tree @ [ Sd (TemporaryReg 0, var_stack_position) ]
   | While (ex, stmts) ->
-      while_loop_to_asm ex stmts cur_stack_pointer count_of_while count_of_if
-        open_label_count variables_shifts
+      while_loop_to_asm ex stmts stack_pointer variables_stack_position
+        label_count
   | If (ex, then_stmts, else_stmts) ->
-      if_stmt_to_asm ex then_stmts else_stmts cur_stack_pointer count_of_while
-        count_of_if open_label_count variables_shifts
-  | EmptyStatement -> [ Comment "# Empty Statement" ]
+      if_stmt_to_asm ex then_stmts else_stmts stack_pointer
+        variables_stack_position label_count
+  | _ -> []
 
-and stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
-    open_label_count variables_shifts =
+and while_loop_to_asm (ex : expr) (stmts : statement list)
+    (stack_pointer : int ref) (variables_stack_position : int StringMap.t ref)
+    (label_count : int ref) : instr list =
+  incr label_count;
+  let cur_while_index = !label_count in
+  let while_condition_label_name =
+    Printf.sprintf ".while_%d_condition" cur_while_index
+  in
+  let while_loop_label_name = Printf.sprintf ".while_%d_loop" cur_while_index in
+  let while_condition_expr_tree =
+    expr_to_asm_tree ex stack_pointer variables_stack_position
+  in
+  let while_loop_stmts_asm_tree =
+    stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count
+  in
+  [ Jump while_condition_label_name; Label while_loop_label_name ]
+  @ while_loop_stmts_asm_tree
+  @ [ Jump while_condition_label_name; Label while_condition_label_name ]
+  @ while_condition_expr_tree
+  @ [ Bne (TemporaryReg 0, Zero, while_loop_label_name) ]
+
+and if_stmt_to_asm (ex : expr) (then_stmts : statement list)
+    (else_stmts : statement list) (stack_pointer : int ref)
+    (variables_stack_position : int StringMap.t ref) (label_count : int ref) :
+    instr list =
+  let current_if_index = !label_count + 1 in
+  let result_label_index = !label_count + 2 in
+  label_count := !label_count + 2;
+  let ex_asm_tree =
+    expr_to_asm_tree ex stack_pointer variables_stack_position
+  in
+  let then_stmts_asm_tree =
+    stmts_to_asm_tree then_stmts stack_pointer variables_stack_position
+      label_count
+  in
+  let else_stmts_asm_tree =
+    stmts_to_asm_tree else_stmts stack_pointer variables_stack_position
+      label_count
+  in
+  let else_branch_label_name = Printf.sprintf ".if_%d_else" current_if_index in
+  let next_open_label_name = ".L" ^ string_of_int result_label_index in
+  ex_asm_tree
+  @ [ Beq (TemporaryReg 0, Zero, else_branch_label_name) ]
+  @ then_stmts_asm_tree
+  @ [ Jump next_open_label_name; Label else_branch_label_name ]
+  @ else_stmts_asm_tree
+  @ [ Jump next_open_label_name; Label next_open_label_name ]
+
+and stmts_to_asm_tree (stmts : statement list) (stack_pointer : int ref)
+    (variables_stack_position : int StringMap.t ref) (label_count : int ref) :
+    instr list =
   let stmts_asm = ref [] in
   List.iter
     (fun stmt ->
-      let stmt_asm =
-        stmt_to_asm stmt cur_stack_pointer count_of_while count_of_if
-          open_label_count variables_shifts
+      let stmt_asm_tree =
+        statement_to_asm_tree stmt stack_pointer variables_stack_position
+          label_count
       in
-
-      stmts_asm := !stmts_asm @ stmt_asm)
+      stmts_asm := !stmts_asm @ stmt_asm_tree)
     stmts;
   !stmts_asm
 
-and while_loop_to_asm e stmts cur_stack_pointer count_of_while count_of_if
-    open_label_count variables_shifts =
-  incr count_of_while;
-  let cur_while_index = !count_of_while in
-  let while_condition_label =
-    Printf.sprintf ".while_%d_condition" cur_while_index
+let program_to_asm_tree (stmts : statement list) : instr list =
+  let stack_pointer = ref 16 in
+  let variables_stack_position = ref (init_variables stack_pointer stmts) in
+  let label_count = ref 0 in
+  (* TODO: label_count - its not fun info its program info *)
+  let stmts_asm_tree =
+    stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count
   in
-  let while_loop_label = Printf.sprintf ".while_%d_loop" cur_while_index in
-  let exp_while = expr_to_asm e cur_stack_pointer variables_shifts in
-  let stmts_asm =
-    stmts_to_asm stmts cur_stack_pointer count_of_while count_of_if
-      open_label_count variables_shifts
-  in
-
-  [
-    Label (while_loop_label, stmts_asm); Label (while_condition_label, exp_while);
-  ]
-
-and if_stmt_to_asm ex then_stmts else_stmts cur_stack_pointer count_of_while
-    count_of_if open_label_count variables_shifts =
-  incr count_of_if;
-  incr open_label_count;
-  let current_open_label_index = !count_of_if in
-  let current_if_index = !count_of_if in
-  let ex_asm = expr_to_asm ex cur_stack_pointer variables_shifts in
-  let then_stmts_asm =
-    stmts_to_asm then_stmts cur_stack_pointer count_of_while count_of_if
-      open_label_count variables_shifts
-  in
-  let else_stmts_asm =
-    stmts_to_asm else_stmts cur_stack_pointer count_of_while count_of_if
-      open_label_count variables_shifts
-  in
-
-  let else_branch_label_name = Printf.sprintf ".if_%d_else" current_if_index in
-  let next_open_label_name = ".L" ^ string_of_int current_open_label_index in
-  ex_asm
-  @ [ Beq (A 5, ZERO, else_branch_label_name) ]
-  @ then_stmts_asm @ [ J next_open_label_name ]
-  @ [ Label (else_branch_label_name, else_stmts_asm) ]
-  @ [ J next_open_label_name ]
-  @ [ Label (next_open_label_name, []) ]
-
-let cur_stack_pointer = ref 16
-let st_stack_pointer = ref 16
-let count_of_while = ref 0
-let count_of_if = ref 0
-let open_label_count = ref 0
-
-let rec asm_stmt stmt list_of_instr cur_stack_pointer variables_shifts =
-  match stmt with
-  | Expression ex ->
-      let result = expr_to_asm ex cur_stack_pointer variables_shifts in
-      list_of_instr := !list_of_instr @ result
-  | AssignStatement (_, ex) ->
-      let result = expr_to_asm ex cur_stack_pointer variables_shifts in
-      list_of_instr := !list_of_instr @ result
-  | While (e, stmts) ->
-      let result = expr_to_asm e cur_stack_pointer variables_shifts in
-      list_of_instr := !list_of_instr @ result;
-      let loop_stmts =
-        while_loop_to_asm e stmts cur_stack_pointer count_of_while count_of_if
-          open_label_count variables_shifts
-      in
-      list_of_instr := !list_of_instr @ loop_stmts
-  | If (e, if_stmts, else_stmts) ->
-      let result = expr_to_asm e cur_stack_pointer variables_shifts in
-      list_of_instr := !list_of_instr @ result;
-      let if_then_statement =
-        if_stmt_to_asm e if_stmts else_stmts cur_stack_pointer count_of_while
-          count_of_if open_label_count variables_shifts
-      in
-      list_of_instr := !list_of_instr @ if_then_statement
-  | EmptyStatement ->
-      list_of_instr := !list_of_instr @ [ Comment "# Empty Statement" ]
-
-and asm_tree stmts cur_stack_pointer =
-  let all = ref ([] : structure list) in
-  (* TO DO: all move from this function *)
-  let list_of_instr = ref [] in
-  variables_shifts := init_variables cur_stack_pointer stmts;
-  (* print_endline "=====";
-     StringMap.iter
-       (fun key value -> print_endline (key ^ ": " ^ string_of_int value))
-       !variables_shifts;
-     print_endline "====="; *)
-  List.iter
-    (fun stmt -> asm_stmt stmt list_of_instr cur_stack_pointer variables_shifts)
-    stmts;
-  let cur_structure = Function ("_start", !list_of_instr, !variables_shifts) in
-  all := !all @ [ cur_structure ];
-  !all
-
-(* let show = show_structure (List.nth show_res 0) |> print_endline *)
-
-(* let s = [%yojson_of: int M.t] m |> Yojson.Safe.to_string *)
+  (* must return: Function ("_start", stmts_asm_tree, variables_stack_position) *)
+  stmts_asm_tree
