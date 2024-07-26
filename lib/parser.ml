@@ -29,13 +29,13 @@ type expr =
   | Number of int (* 12 *)
   | Unary of oper * expr (* -12 *)
   | Binary of expr * oper * expr (* 14  + 12 *)
-  | AssignExpression of string * assign_oper * expr
+  | AssignExpression of string * assign_oper * expr (* a := 10*)
   | EmptyExpression
 [@@deriving show]
 
 type statement =
   | Expression of expr
-  | AssignStatement of string * expr
+  | AssignStatement of string * expr (* a := 10 + 20;*)
   | EmptyStatement
   | While of expr * statement list
   | If of expr * statement list * statement list
@@ -46,6 +46,7 @@ let string_of_unary_operator = function
   | Minus -> "-"
   | Invalid -> failwith "AST Error: unexpected operator."
   | _ -> failwith "AST Error: unexpected unary operator."
+[@@deriving show]
 
 let string_of_binary_operator = function
   | Plus -> "+"
@@ -59,6 +60,7 @@ let string_of_binary_operator = function
   | Equal -> "=="
   | Unequal -> "!="
   | Invalid -> failwith "AST Error: unexpected unary operator."
+[@@deriving show]
 
 let string_of_assign_operator = function
   | DefaultAssign -> ":="
@@ -67,6 +69,7 @@ let string_of_assign_operator = function
   | MultiplyAssign -> "*="
   | DivideAssign -> "/="
   | InvalidAssing -> "?=?"
+[@@deriving show]
 
 let rec string_of_expression text pos = function
   | Variable n -> n
