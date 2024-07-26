@@ -27,7 +27,6 @@ type instr =
   | Seqz of reg * reg
   | Beq of reg * reg * string
   | Bne of reg * reg * string
-  | Comment of string
   | Label of string
   | Jump of string
 [@@deriving show]

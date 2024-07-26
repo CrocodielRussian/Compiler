@@ -1,5 +1,6 @@
 open Compiler.Asm_tree
 open Compiler.Parser
+open Compiler.Riscv_translator
 
 module Main = struct
   let text =
@@ -8,7 +9,8 @@ module Main = struct
 
   let () =
     let instructions = program_to_asm_tree (parse_program text) in
-    List.iter
+    (* List.iter
       (fun instruction -> print_endline (show_instr instruction))
-      instructions
+      instructions; *)
+    print_endline (string_of_instr_list instructions)
 end
