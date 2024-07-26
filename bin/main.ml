@@ -6,7 +6,7 @@ module Main = struct
   let text =
     "var b := 12 + 34; var c :=b*b/3*4- print_int    (  b / b  ); var a:= -12 \
      * +10 - 10 / 10 + 10 + b - 90; while a > 10 /  (1 + 0) do a /= (a + -2); \
-     done print_int(10 20);"
+     done print_int(12);"
 
   let () =
     (* let instructions = program_to_asm_tree (parse_program text) in *)

@@ -82,19 +82,13 @@ let rec string_of_expression = function
   | Unary (op, e) ->
       string_of_unary_operator op ^ "(" ^ string_of_expression e ^ ")"
   | Binary (e1, op, e2) ->
-      "("
-      ^ string_of_expression e1
-      ^ " "
+      "(" ^ string_of_expression e1 ^ " "
       ^ string_of_binary_operator op
-      ^ " "
-      ^ string_of_expression e2
-      ^ ")"
+      ^ " " ^ string_of_expression e2 ^ ")"
   | AssignExpression (v, op, e) ->
       "(" ^ v ^ " "
       ^ string_of_assign_operator op
-      ^ " "
-      ^ string_of_expression e
-      ^ ")"
+      ^ " " ^ string_of_expression e ^ ")"
   | FuncCall (n, expressions) ->
       let expressions_string = ref [] in
       List.iter
@@ -106,9 +100,7 @@ let rec string_of_expression = function
   | EmptyExpression -> ""
 
 let rec string_of_statements stmts =
-  let str_lst =
-    List.map (fun stmt -> string_of_statement stmt) stmts
-  in
+  let str_lst = List.map (fun stmt -> string_of_statement stmt) stmts in
   String.concat "\n" str_lst
 
 and string_of_statement = function
@@ -117,22 +109,15 @@ and string_of_statement = function
   | AssignStatement (v, e2) ->
       "var " ^ v ^ " := " ^ string_of_expression e2 ^ ";"
   | While (e1, stmts) ->
-      "while "
-      ^ string_of_expression e1
-      ^ " do\n"
-      ^ string_of_statements stmts
+      "while " ^ string_of_expression e1 ^ " do\n" ^ string_of_statements stmts
       ^ "\ndone"
   | If (e1, if_stmts, else_stmts) ->
       if else_stmts = [ EmptyStatement ] then
-        "if "
-        ^ string_of_expression e1
-        ^ " then\n"
+        "if " ^ string_of_expression e1 ^ " then\n"
         ^ string_of_statements if_stmts
         ^ "\nendif"
       else
-        "if "
-        ^ string_of_expression e1
-        ^ " then\n"
+        "if " ^ string_of_expression e1 ^ " then\n"
         ^ string_of_statements if_stmts
         ^ "\nelse\n"
         ^ string_of_statements else_stmts
@@ -408,15 +393,34 @@ and parse_func_call ident text pos =
       let expected_args_count =
         ref (StringMap.find ident !functions_args_count)
       in
-      while text.[!pos] != ')' || !expected_args_count = 0 do
+      while text.[!pos] != ')' && !expected_args_count >= 0 do
         let arg = parse_expr text pos in
         match arg with
         | EmptyExpression ->
             failwith
               ("ParseError: on position " ^ (!pos |> string_of_int)
              ^ " couldn't  find argument.")
-        | _ -> func_args_expr := !func_args_expr @ [ arg ]
+        | _ ->
+            func_args_expr := !func_args_expr @ [ arg ];
+            decr expected_args_count;
+            skip_whitespaces text pos;
+            if expect_symbol text !pos ',' || expect_symbol text !pos ')' then
+              if expect_symbol text !pos ',' then incr pos else ()
+            else
+              failwith
+                ("ParseError: on position " ^ (!pos |> string_of_int)
+               ^ " couldn't find symbol of closed bracket for close function '"
+               ^ ident ^ "' call: ')' or ','.")
       done;
+      if !expected_args_count != 0 then
+        failwith
+          ("ParseError: on position " ^ (!pos |> string_of_int)
+         ^ " on function " ^ ident ^ " call find "
+          ^ string_of_int
+              (StringMap.find ident !functions_args_count - !expected_args_count)
+          ^ " arguments, but expected argument count is "
+          ^ string_of_int (StringMap.find ident !functions_args_count))
+      else ();
       skip_whitespaces text pos;
       match expect_symbol text !pos ')' with
       | true ->
