@@ -46,6 +46,7 @@ let string_of_unary_operator = function
   | Minus -> "-"
   | Invalid -> failwith "AST Error: unexpected operator."
   | _ -> failwith "AST Error: unexpected unary operator."
+[@@deriving show]
 
 let string_of_binary_operator = function
   | Plus -> "+"
@@ -59,6 +60,7 @@ let string_of_binary_operator = function
   | Equal -> "=="
   | Unequal -> "!="
   | Invalid -> failwith "AST Error: unexpected unary operator."
+[@@deriving show]
 
 let string_of_assign_operator = function
   | DefaultAssign -> ":="
@@ -67,6 +69,7 @@ let string_of_assign_operator = function
   | MultiplyAssign -> "*="
   | DivideAssign -> "/="
   | InvalidAssing -> "?=?"
+[@@deriving show]
 
 let rec string_of_expression text pos = function
   | Variable n -> n
