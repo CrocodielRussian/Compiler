@@ -19,9 +19,9 @@ let variables_shifts : int StringMap.t ref = ref StringMap.empty
 
 let rec binop_to_asm op =
   match op with
-  | Plus -> "addw a5, a4, a5"
-  | Minus -> "subw a5, a4, a5"
-  | Multiply -> "mulw a5, a4, a5"
+  | Plus -> "add a5, a4, a5"
+  | Minus -> "sub a5, a4, a5"
+  | Multiply -> "mul a5, a4, a5"
   | Divide -> "div a5, a4, a5"
   | More -> "sgt a5, a4, a5"
   | MoreOrEqual -> Printf.sprintf "%s\nxori a5, a5, 1" (binop_to_asm Low)
@@ -62,7 +62,7 @@ let rec expr_to_asm e cur_stack_pointer =
   | Number n -> Printf.sprintf "li a5, %d" n
   | Variable v ->
       let var_pos = StringMap.find v !variables_shifts in
-      Printf.sprintf "lw a5, -%d(s0)" var_pos
+      Printf.sprintf "ld a5, -%d(s0)" var_pos
   | Unary (op, ex) -> (
       let ex_asm = expr_to_asm ex cur_stack_pointer in
       match op with
