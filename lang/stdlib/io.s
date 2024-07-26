@@ -3,9 +3,9 @@
 .equ STDIN, 0
 
 .text
-.global _print_number
+.global print_int
 # args[a0 - int to print]
-_print_number:
+print_int:
     addi sp, sp, -40        # create stack space
     sd s0, 32(sp)           # store frame pointer
     addi s0, sp, 40         # new frame pointer
@@ -20,26 +20,26 @@ _print_number:
     addi t3, zero, '\n'     # '\n' char
     sb t3, 0(a1)            # store '\n'
   
-    bge a0, zero, _print_number.cached_number
+    bge a0, zero, print_int.cached_number
     # a0 < 0 --> get absolute a
     li t0, 1                # set sign-bit to 1
     xori a0, a0, -1
     addi a0, a0, 1          # num = abs(num)
 
-_print_number.cached_number:
+print_int.cached_number:
     remu         t3, a0, t1       # num % 10
     addi         t3, t3, '0'       # convert to ascii
     addi         a1, a1, -1       # decrement start pointer
     sb           t3, 0(a1)        # store value
     divu         a0, a0, t1       # num /= 10
-    blt          zero, a0, _print_number.cached_number    # if num > 0 loop
+    blt          zero, a0, print_int.cached_number    # if num > 0 loop
 
-    beq          t0, zero, _print_number.print
+    beq          t0, zero, print_int.print
     li           t3, '-'
     addi         a1, a1, -1
     sb           t3, 0(a1)        # store char '-'
 
-_print_number.print:
+print_int.print:
     sub          t4, t2, a1
     addi         a2, t4, 1        # len =  string[n] - string[0] + 1
     li           a0, STDOUT

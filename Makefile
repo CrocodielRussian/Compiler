@@ -12,10 +12,10 @@ all:
 	mkdir -p $(TARGET_DIR)
 	make run
 
-$(TARGET_DIR)main.o: 
+$(TARGET_DIR)main.o: $(SRC_DIR)main.s
 	$(ASMC) $(COMPILE_FLAGS) $(SRC_DIR)main.s -o $(TARGET_DIR)main.o
 
-$(TARGET_DIR)stdlib:
+$(TARGET_DIR)stdlib: $(SRC_DIR)stdlib/io.s
 	mkdir -p $(TARGET_DIR)stdlib
 	make $(TARGET_DIR)stdlib/io.o
 
