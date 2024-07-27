@@ -23,12 +23,14 @@ type instr =
   | Sgt of reg * reg * reg
   | Slt of reg * reg * reg
   | Xori of reg * reg * int
+  | Addi of reg * reg * int
   | Seqz of reg * reg
   | Beq of reg * reg * string
   | Bne of reg * reg * string
   | Label of string
   | Jump of string
   | Call of string
+  | Ret 
 [@@deriving show]
 
 type structure = Function of string * instr list * int StringMap.t
@@ -46,6 +48,13 @@ let init_variables (cur_stack_pointer : int ref) (statements : statement list) :
       | _ -> ())
     statements;
   !variables_stack_position
+let max_min_variable_position (variables_stack_position : int StringMap.t) = 
+    let max_pos = ref 16 in
+    let min_pos = ref 24 in
+    StringMap.iter(fun _ value ->  max_pos := max !max_pos value; min_pos := min !min_pos value;) variables_stack_position;
+    if !max_pos < !min_pos then 
+      (!max_pos, !max_pos)
+    else (!min_pos, !max_pos)
 
 let map_assign (op : assign_oper) : oper =
   match op with
@@ -186,6 +195,14 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
   | If (ex, then_stmts, else_stmts) ->
       if_stmt_to_asm ex then_stmts else_stmts stack_pointer
         variables_stack_position label_count
+  | ReturnStatement ex ->  let min_pos, max_pos = max_min_variable_position !variables_stack_position in 
+  let ex_asm_tree = expr_to_asm_tree ex stack_pointer variables_stack_position
+  in ex_asm_tree @ [
+    Ld( ReturnAddress, min_pos - 16);
+    Ld( FramePointer, min_pos - 8);
+    Addi( StackPointer, StackPointer, max_pos);
+    Ret 
+  ]
   | _ -> []
 
 and while_loop_to_asm (ex : expr) (stmts : statement list)
@@ -250,13 +267,42 @@ and stmts_to_asm_tree (stmts : statement list) (stack_pointer : int ref)
     stmts;
   !stmts_asm
 
-let program_to_asm_tree (stmts : statement list) : instr list =
-  let stack_pointer = ref 16 in
-  let variables_stack_position = ref (init_variables stack_pointer stmts) in
-  let label_count = ref 0 in
-  (* TODO: label_count - its not fun info its program info *)
+let func_stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count =
   let stmts_asm_tree =
     stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count
   in
   (* must return: Function ("_start", stmts_asm_tree, variables_stack_position) *)
   stmts_asm_tree
+
+(* let label_count = ref 0  *)
+(* TODO: label_count - its not fun info its program info *)
+let func_to_asm_tree name args_name stmts label_count = 
+  
+  let stack_pointer = ref 16 in
+  (*   in ex_asm_tree @ [
+    Ld( ReturnAddress, min_pos - 16);
+    Ld( FramePointer, min_pos - 8);
+    Addi( StackPointer, StackPointer, max_pos);
+    Ret 
+  ] *)
+  let all_instr = ref [] in
+
+  (* List.iter(fun exp -> 
+    all_instr := !all_instr @ (expr_to_asm_tree exp stack_pointer variables_stack_position );
+    stack_pointer := !stack_pointer + 8;
+    all_instr := !all_instr @ [Sd (ArgumentReg 0, !stack_pointer)]
+    )
+    (List.rev expressions); *)
+  let index_reg = ref 0 in
+  while (!index_reg < List.length args_name) && (!index_reg < 8) do (all_instr := !all_instr @ [Sd(ArgumentReg !index_reg, !stack_pointer + (8 * !index_reg))])   variables_stack_position :=
+  (* StringMap.add v stack_pointer !variables_stack_position; done; *)
+
+  (* List.iter(fun instruction -> show_instr instruction |> print_endline) args_name; *)
+   (* List.iter(fun arg -> all_instr := !all_instr @ ) args_name;*)
+  let variables_stack_position = ref (init_variables stack_pointer stmts) in
+  let min_pos, _ = max_min_variable_position !variables_stack_position in 
+  let func_block = func_stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count in
+  [Label name; Addi (StackPointer, StackPointer, (~-(!stack_pointer))); Sd(ReturnAddress, !stack_pointer + min_pos - 16); Sd(FramePointer, !stack_pointer + min_pos - 8); Addi(FramePointer, StackPointer, !stack_pointer)] @ func_block 
+
+
+

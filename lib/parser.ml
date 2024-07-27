@@ -37,13 +37,14 @@ type expr =
 
 type statement =
   | Expression of expr
+  | ReturnStatement of expr 
   | AssignStatement of string * expr (* a := 10 + 20;*)
   | EmptyStatement
   | While of expr * statement list
   | If of expr * statement list * statement list
 [@@deriving show]
 
-type structure = FuncStruct of string * string list * statement list * expr
+type structure = FuncStruct of string * string list * statement list
 [@@deriving show]
 
 let string_of_unary_operator = function
@@ -105,6 +106,7 @@ let rec string_of_statements stmts =
 
 and string_of_statement = function
   | EmptyStatement -> ""
+  | ReturnStatement e -> "return " ^ string_of_expression e ^ ";"
   | Expression e -> string_of_expression e ^ ";"
   | AssignStatement (v, e2) ->
       "var " ^ v ^ " := " ^ string_of_expression e2 ^ ";"
@@ -376,6 +378,7 @@ and parse_simplest_expr text pos =
           pos := !pos - String.length ident;
           variable text pos)
     | _ ->
+        print_endline "hello";
         failwith
           ("ParseError: on position " ^ (!pos |> string_of_int)
          ^ " unexpected symbol: '"
@@ -606,6 +609,11 @@ and parse_statements text pos check =
     | "var" ->
         let result = parser_assign_statement text pos in
         all := !all @ [ result ]
+    | "return" ->(
+        let result = parse_expr_statement text pos in 
+        match result with 
+        | Expression ex -> all := !all @ [ReturnStatement ex]
+        | __-> failwith ("ParserError: on position " ^ string_of_int !pos ^ "unexpected expression " ^ string_of_statement result ^ "."))
     | _ ->
         pos := !pos - String.length ident;
         let result = parse_expr_statement text pos in
@@ -615,7 +623,93 @@ and parse_statements text pos check =
 
 let check_program_end text pos = !pos < String.length text
 
+let check_func_stmts_end text pos = 
+  skip_whitespaces text pos;
+  not (expect_symbol text !pos '}')
+
+
+let parse_func_stmts text pos =
+  skip_whitespaces text pos; 
+  let symbol = text.[!pos] in
+  match symbol with
+  | '{' -> (
+    incr pos;
+    let func_stmts = parse_statements text pos check_func_stmts_end in
+    func_stmts
+    )
+  | _ -> failwith ("ParserError: on position " ^ string_of_int !pos ^ " unexpected symbol: " ^ Char.escaped symbol ^ "without '{'.")
+
+let parse_func_structure text pos = 
+  skip_whitespaces text pos;
+  
+  let ident = identifier text pos in 
+  if String.length ident = 0 then 
+    failwith ("ParseError: unnamed function define.");
+  initialised_functions := StringSet.add ident !initialised_functions;
+  
+  skip_whitespaces text pos;
+  let symbol = text.[!pos] in
+  match symbol with
+  | '(' -> (
+      incr pos;
+      skip_whitespaces text pos;
+      let func_args_expr : string list ref = ref [] in
+      while text.[!pos] != ')'do
+        skip_whitespaces text pos;
+        let arg = identifier text pos in
+        if String.length arg = 0 then 
+          failwith ("ParseError: unnamed argument in function define " ^ ident ^ ".");
+        func_args_expr := !func_args_expr @ [ arg ];
+        initialised_variables := StringSet.add arg !initialised_variables;
+        skip_whitespaces text pos;
+        if expect_symbol text !pos ',' || expect_symbol text !pos ')' then
+          if expect_symbol text !pos ',' then incr pos else ()
+        else
+          failwith
+            ("ParseError: on position " ^ (!pos |> string_of_int)
+            ^ " couldn't find symbol of closed bracket for close function '"
+            ^ ident ^ "' call: ')' or ','.")
+          
+      done;
+      skip_whitespaces text pos;
+      match expect_symbol text !pos ')' with
+      | true ->(
+          incr pos;
+          let block_of_func = parse_func_stmts text pos in
+          FuncStruct(ident, !func_args_expr ,block_of_func)
+          )
+
+      | false ->
+          failwith
+            ("ParseError: on position " ^ (!pos |> string_of_int)
+           ^ " couldn't find symbol of closed bracket for close function '"
+           ^ ident ^ "' call: ')'."))
+  | _ ->
+      failwith
+        ("ParseError: on position " ^ (!pos |> string_of_int)
+       ^ " couldn't find symbol of open bracket of function call: '('. Find \
+          symbol: '" ^ Char.escaped symbol ^ "'.")
+
+
+let parse_structures text pos check =
+  let all = ref [] in
+  (* initialised_functions := StringSet.of_list []; *)
+  while check text pos && !pos < String.length text do
+    skip_whitespaces text pos;
+    let ident = identifier text pos in
+    (* print_endline ident;
+    print_endline (">" ^ string_of_int (String.length text)); *)
+    match ident with
+    | "def" ->
+        let result = parse_func_structure text pos in
+        if !pos < String.length text then
+          incr pos;
+        all := !all @ [ result ]
+    | _ ->
+        failwith ("ParseError: on position " ^ string_of_int !pos ^ " unexpected identifer: " ^ ident ^ ".")
+  done;
+  !all
 let parse_program text =
   let pos = ref 0 in
   initialised_variables := StringSet.of_list [];
-  parse_statements text pos check_program_end
+  parse_structures text pos check_program_end

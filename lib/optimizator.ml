@@ -108,7 +108,9 @@ let rec optimize_stmt (stmt : statement) =
   | While (ex, stmts) -> While (optimize_expr ex, optimize_stmts stmts)
   | If (ex, then_stmts, else_stmts) ->
       If (optimize_expr ex, optimize_stmts then_stmts, optimize_stmts else_stmts)
+  | ReturnStatement _ -> stmt
   | EmptyStatement -> stmt
+
 
 and optimize_stmts (stmts : statement list) : statement list =
   let new_stmts = ref [] in

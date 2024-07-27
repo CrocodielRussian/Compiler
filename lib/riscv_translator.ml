@@ -23,12 +23,15 @@ let string_of_instr (instruction : instr) =
   | Sgt (r1, r2, r3)  -> Printf.sprintf "sgt\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
   | Slt (r1, r2, r3)  -> Printf.sprintf "slt\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)
   | Xori (r1, r2, n)  -> Printf.sprintf "xori\t%s, %s, %d" (string_of_reg r1) (string_of_reg r2) n
+  | Addi (r1, r2, n)  -> Printf.sprintf "addi\t%s, %s, %d" (string_of_reg r1) (string_of_reg r2) n
   | Seqz (r1, r2) -> Printf.sprintf "segz\t%s, %s" (string_of_reg r1) (string_of_reg r2)
   | Beq (r1, r2, l)  -> Printf.sprintf "beq\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) l
   | Bne (r1, r2, l)  -> Printf.sprintf "bne\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) l
   | Label l -> Printf.sprintf "%s:" l
   | Jump l -> Printf.sprintf "j\t%s" l
   | Call l -> Printf.sprintf "call\t%s" l
+  | Ret -> "ret "
+
 
 let string_of_instr_list (instr_list : instr list) = 
   let all = ref [] in
