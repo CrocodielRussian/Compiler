@@ -666,6 +666,8 @@ let parse_func_structure text pos =
   let ident = identifier text pos in
   if String.length ident = 0 then
     failwith "ParseError: unnamed function define.";
+  if StringSet.mem ident !initialised_functions then
+    failwith ("LogicError: multidefinition of function: " ^ ident ^ ".");
   initialised_functions := StringSet.add ident !initialised_functions;
   let initialised_variables = ref StringSet.empty in
   skip_whitespaces text pos;
