@@ -30,9 +30,11 @@ type instr =
   | Beq of reg * reg * string
   | Bne of reg * reg * string
   | Label of string
+  | GlobalModifier of string
   | Jump of string
   | Call of string
   | Ret
+  | EnvCall
 [@@deriving show]
 
 let init_variables (variables_stack_position : int StringMap.t ref)
@@ -315,6 +317,7 @@ let func_to_asm_tree name args_name stmts label_count =
   in
   let _, max_pos = max_min_variable_position !variables_stack_position in
   [
+    GlobalModifier name;
     Label name;
     Addi (StackPointer, StackPointer, ~-max_pos);
     StackPointerSd (ReturnAddress, ~-(max_pos - 8));
@@ -322,6 +325,24 @@ let func_to_asm_tree name args_name stmts label_count =
     Addi (FramePointer, StackPointer, max_pos);
   ]
   @ !all_instr @ func_block
+
+let append_start_label (instructions : instr list ref) : instr list =
+  instructions :=
+    !instructions
+    @ [
+        GlobalModifier "_start";
+        Label "_start";
+        Addi (StackPointer, StackPointer, -16);
+        StackPointerSd (FramePointer, -8);
+        Addi (FramePointer, StackPointer, 16);
+        Call "main";
+        Addi (StackPointer, StackPointer, 16);
+        Li (ArgumentReg 7, 93);
+        EnvCall;
+      ];
+  !instructions
+
+(* addi sp, sp, %d\nli a0, 0\nmv a5, a0\nli a7, 93\necall *)
 
 let program_to_asm_tree (structures : structure list) : instr list =
   let all = ref [] in
@@ -333,4 +354,4 @@ let program_to_asm_tree (structures : structure list) : instr list =
           let insts = func_to_asm_tree name args_name stmts label_count in
           all := !all @ insts)
     structures;
-  !all
+  append_start_label all

@@ -55,6 +55,8 @@ let string_of_instr (instruction : instr) =
   | Jump l -> Printf.sprintf "j\t%s" l
   | Call l -> Printf.sprintf "call\t%s" l
   | Ret -> "ret "
+  | EnvCall -> "ecall"
+  | GlobalModifier name -> Printf.sprintf "\n.global %s" name
 
 let string_of_instr_list (instr_list : instr list) =
   let all = ref [] in
@@ -62,6 +64,7 @@ let string_of_instr_list (instr_list : instr list) =
     (fun instruction ->
       match instruction with
       | Label _ -> all := !all @ [ string_of_instr instruction ]
+      | GlobalModifier _ -> all := !all @ [ string_of_instr instruction ]
       | _ -> all := !all @ [ "\t" ^ string_of_instr instruction ])
     instr_list;
-  String.concat "\n" !all
+  Printf.sprintf "%s\n" (String.concat "\n" !all |> String.trim)
