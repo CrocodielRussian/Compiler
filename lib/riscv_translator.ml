@@ -12,8 +12,8 @@ let string_of_reg (register : reg) =
 let string_of_instr (instruction : instr) =
   match instruction with
   | Li (r, n) -> Printf.sprintf "li\t%s, %d" (string_of_reg r) n
-  | Ld (r, n) -> Printf.sprintf "ld\t%s, %d(fp)" (string_of_reg r) (~-n)
-  | Sd (r, n) -> Printf.sprintf "sd\t%s, %d(fp)" (string_of_reg r) (~-n)
+  | Ld (r1, n, r2) -> Printf.sprintf "ld\t%s, %d(%s)" (string_of_reg r1) n (string_of_reg r2)
+  | Sd (r1, n, r2) -> Printf.sprintf "sd\t%s, %d(%s)" (string_of_reg r1) n (string_of_reg r2)
   | Mv (r1, r2) -> Printf.sprintf "mv\t%s, %s" (string_of_reg r1) (string_of_reg r2)
   | Neg (r1, r2) -> Printf.sprintf "neg\t%s, %s" (string_of_reg r1) (string_of_reg r2)
   | Add (r1, r2, r3)  -> Printf.sprintf "add\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) (string_of_reg r3)

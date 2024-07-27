@@ -4,7 +4,7 @@ open Compiler.Riscv_translator
 
 module Main = struct
   let pos = ref 0
-  let text = "def main(){var b := 10 + 89; print_int(b);return 0;}"
+  let text = "def square(num){ num += 10; return num;} def main(){var a := 10; square(a); return 0;}"
 
   let () =
     let program = parse_program text in
