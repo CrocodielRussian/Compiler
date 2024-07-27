@@ -37,7 +37,7 @@ type expr =
 
 type statement =
   | Expression of expr
-  | ReturnStatement of expr 
+  | ReturnStatement of expr
   | AssignStatement of string * expr (* a := 10 + 20;*)
   | EmptyStatement
   | While of expr * statement list
@@ -125,7 +125,6 @@ and string_of_statement = function
         ^ string_of_statements else_stmts
         ^ "\nendif"
 
-let initialised_variables = ref (StringSet.of_list [])
 let initialised_functions = ref (StringSet.of_list [ "print_int" ])
 
 let functions_args_count : int StringMap.t ref =
@@ -168,7 +167,7 @@ let identifier text pos =
   done;
   !acc
 
-let variable text pos =
+let variable text pos initialised_variables =
   skip_whitespaces text pos;
   let acc = identifier text pos in
   if String.length acc > 0 then
@@ -194,6 +193,7 @@ let check_exists_simple_stmt_close text pos =
   else false
 
 let check_expr_stmt_close text pos expression =
+  skip_whitespaces text pos;
   if check_exists_simple_stmt_close text pos then Expression expression
   else
     failwith
@@ -301,66 +301,77 @@ let parse_multiply_operation text pos =
           | _ -> Invalid)
     | _ -> Invalid
 
-let rec parse_expr text pos =
+let rec parse_expr (text : string) (pos : int ref)
+    (initialised_variables : StringSet.t ref) : expr =
   skip_whitespaces text pos;
   let start_pos = !pos in
-  let expression = parse_math_expr text pos in
+  let expression = parse_math_expr text pos initialised_variables in
   match expression with
   | Variable v -> (
       let operation = parse_assign_operation text pos in
       match operation with
       | InvalidAssing ->
           pos := start_pos;
-          parse_compare_expr text pos
-      | _ -> AssignExpression (v, operation, parse_expr text pos))
+          parse_compare_expr text pos initialised_variables
+      | _ ->
+          AssignExpression
+            (v, operation, parse_expr text pos initialised_variables))
   | _ ->
       pos := start_pos;
-      parse_compare_expr text pos
+      parse_compare_expr text pos initialised_variables
 
-and parse_compare_expr text pos =
+and parse_compare_expr text pos initialised_variables =
   skip_whitespaces text pos;
-  let expression = ref (parse_math_expr text pos) in
+  let expression = ref (parse_math_expr text pos initialised_variables) in
   let operation = ref (parse_compare_operation text pos) in
   while !pos < String.length text && !operation != Invalid do
-    expression := Binary (!expression, !operation, parse_math_expr text pos);
+    expression :=
+      Binary
+        (!expression, !operation, parse_math_expr text pos initialised_variables);
     operation := parse_compare_operation text pos
   done;
   !expression
 
-and parse_math_expr text pos =
+and parse_math_expr text pos initialised_variables =
   skip_whitespaces text pos;
-  let expression = ref (parse_mult_expr text pos) in
+  let expression = ref (parse_mult_expr text pos initialised_variables) in
   let operation = ref (parse_adding_operation text pos) in
   while !pos < String.length text && !operation != Invalid do
-    expression := Binary (!expression, !operation, parse_mult_expr text pos);
+    expression :=
+      Binary
+        (!expression, !operation, parse_mult_expr text pos initialised_variables);
     operation := parse_adding_operation text pos
   done;
   !expression
 
-and parse_mult_expr text pos =
+and parse_mult_expr text pos initialised_variables =
   skip_whitespaces text pos;
-  let expression = ref (parse_simplest_expr text pos) in
+  let expression = ref (parse_simplest_expr text pos initialised_variables) in
   let operation = ref (parse_multiply_operation text pos) in
   while !pos < String.length text && !operation != Invalid do
-    expression := Binary (!expression, !operation, parse_simplest_expr text pos);
+    expression :=
+      Binary
+        ( !expression,
+          !operation,
+          parse_simplest_expr text pos initialised_variables );
     operation := parse_multiply_operation text pos
   done;
   !expression
 
-and parse_simplest_expr text pos =
+and parse_simplest_expr text pos initialised_variables =
   skip_whitespaces text pos;
   if !pos >= String.length text then EmptyExpression
   else
     match text.[!pos] with
     | '-' ->
         incr pos;
-        Unary (Minus, parse_simplest_expr text pos)
+        Unary (Minus, parse_simplest_expr text pos initialised_variables)
     | '+' ->
         incr pos;
-        parse_simplest_expr text pos
+        parse_simplest_expr text pos initialised_variables
     | '(' ->
         incr pos;
-        let result_of_searching = parse_expr text pos in
+        let result_of_searching = parse_expr text pos initialised_variables in
         skip_whitespaces text pos;
         if !pos < String.length text && text.[!pos] = ')' then (
           incr pos;
@@ -373,19 +384,18 @@ and parse_simplest_expr text pos =
     | 'a' .. 'z' | 'A' .. 'Z' ->
         let ident = identifier text pos in
         if StringSet.mem ident !initialised_functions then
-          parse_func_call ident text pos
+          parse_func_call ident text pos initialised_variables
         else (
           pos := !pos - String.length ident;
-          variable text pos)
+          variable text pos initialised_variables)
     | _ ->
-        print_endline "hello";
         failwith
           ("ParseError: on position " ^ (!pos |> string_of_int)
          ^ " unexpected symbol: '"
           ^ Char.escaped text.[!pos]
           ^ "'.")
 
-and parse_func_call ident text pos =
+and parse_func_call ident text pos initialised_variables =
   skip_whitespaces text pos;
   let symbol = text.[!pos] in
   match symbol with
@@ -397,7 +407,7 @@ and parse_func_call ident text pos =
         ref (StringMap.find ident !functions_args_count)
       in
       while text.[!pos] != ')' && !expected_args_count >= 0 do
-        let arg = parse_expr text pos in
+        let arg = parse_expr text pos initialised_variables in
         match arg with
         | EmptyExpression ->
             failwith
@@ -440,9 +450,9 @@ and parse_func_call ident text pos =
        ^ " couldn't find symbol of open bracket of function call: '('. Find \
           symbol: '" ^ Char.escaped symbol ^ "'.")
 
-let parse_expr_statement text pos =
+let parse_expr_statement text pos initialised_variables =
   skip_whitespaces text pos;
-  let result = parse_expr text pos in
+  let result = parse_expr text pos initialised_variables in
   match result with
   | EmptyExpression -> EmptyStatement
   | _ -> check_expr_stmt_close text pos result
@@ -457,7 +467,7 @@ let assert_assign_statement_op text pos =
        ^ " couldn't find assign operator. Find " ^ String.sub text !pos 2 ^ "."
         )
 
-let parser_assign_statement text pos =
+let parser_assign_statement text pos initialised_variables =
   skip_whitespaces text pos;
   let ident = identifier text pos in
   assert_assign_statement_op text pos;
@@ -466,7 +476,9 @@ let parser_assign_statement text pos =
       ("LogicError: on position " ^ string_of_int !pos ^ " init variable "
      ^ ident ^ ", which exists now.")
   else
-    let assign = AssignStatement (ident, parse_expr text pos) in
+    let assign =
+      AssignStatement (ident, parse_expr text pos initialised_variables)
+    in
     if check_exists_simple_stmt_close text pos then (
       initialised_variables := StringSet.add ident !initialised_variables;
       assign)
@@ -526,17 +538,19 @@ let check_endif_exists_and_skip text pos =
     | _ -> true
   else false
 
-let rec parse_while_loop_statement text pos =
+let rec parse_while_loop_statement text pos initialised_variables =
   skip_whitespaces text pos;
   if !pos > String.length text then
     failwith
       ("Parser Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find bool expression in while.")
   else
-    let expression = parse_expr text pos in
+    let expression = parse_expr text pos initialised_variables in
     if check_do_exists text pos then (
       let loop =
-        While (expression, parse_statements text pos check_done_exists)
+        While
+          ( expression,
+            parse_statements text pos check_done_exists initialised_variables )
       in
       skip_whitespaces text pos;
       if !pos + 4 <= String.length text then
@@ -557,17 +571,18 @@ let rec parse_while_loop_statement text pos =
         ("Parser Error: on position " ^ (!pos |> string_of_int)
        ^ " couldn't find do.")
 
-and parse_if_statement text pos =
+and parse_if_statement text pos initialised_variables =
   if !pos > String.length text then
     failwith
       ("Parser Error: on position " ^ (!pos |> string_of_int)
      ^ " couldn't find bool expression in if.")
   else
-    let expression = parse_expr text pos in
+    let expression = parse_expr text pos initialised_variables in
     if check_then_exists text pos then (
       skip_whitespaces text pos;
       let if_fork =
         parse_statements text pos check_else_and_endif_construction_exists
+          initialised_variables
       in
       skip_whitespaces text pos;
       if !pos + 5 <= String.length text then
@@ -580,7 +595,8 @@ and parse_if_statement text pos =
             If
               ( expression,
                 if_fork,
-                parse_statements text pos check_endif_exists_and_skip )
+                parse_statements text pos check_endif_exists_and_skip
+                  initialised_variables )
         | _ ->
             failwith
               ("Parser Error: on position " ^ (!pos |> string_of_int)
@@ -594,59 +610,64 @@ and parse_if_statement text pos =
         ("ParserError: on position " ^ (!pos |> string_of_int)
        ^ " couldn't find then.")
 
-and parse_statements text pos check =
+and parse_statements text pos check initialised_variables =
   let all = ref [] in
   while check text pos do
     skip_whitespaces text pos;
     let ident = identifier text pos in
     match ident with
     | "while" ->
-        let result = parse_while_loop_statement text pos in
+        let result =
+          parse_while_loop_statement text pos initialised_variables
+        in
         all := !all @ [ result ]
     | "if" ->
-        let result = parse_if_statement text pos in
+        let result = parse_if_statement text pos initialised_variables in
         all := !all @ [ result ]
     | "var" ->
-        let result = parser_assign_statement text pos in
+        let result = parser_assign_statement text pos initialised_variables in
         all := !all @ [ result ]
-    | "return" ->(
-        let result = parse_expr_statement text pos in 
-        match result with 
-        | Expression ex -> all := !all @ [ReturnStatement ex]
-        | __-> failwith ("ParserError: on position " ^ string_of_int !pos ^ "unexpected expression " ^ string_of_statement result ^ "."))
+    | "return" -> (
+        let result = parse_expr_statement text pos initialised_variables in
+        match result with
+        | Expression ex -> all := !all @ [ ReturnStatement ex ]
+        | __ ->
+            failwith
+              ("ParserError: on position " ^ string_of_int !pos
+             ^ "unexpected expression " ^ string_of_statement result ^ "."))
     | _ ->
         pos := !pos - String.length ident;
-        let result = parse_expr_statement text pos in
+        let result = parse_expr_statement text pos initialised_variables in
         all := !all @ [ result ]
   done;
   !all
 
-let check_program_end text pos = !pos < String.length text
-
-let check_func_stmts_end text pos = 
+let check_func_stmts_end text pos =
   skip_whitespaces text pos;
-  not (expect_symbol text !pos '}')
+  !pos < String.length text && not (expect_symbol text !pos '}')
 
-
-let parse_func_stmts text pos =
-  skip_whitespaces text pos; 
+let parse_func_stmts text pos initialised_variables =
+  skip_whitespaces text pos;
   let symbol = text.[!pos] in
   match symbol with
-  | '{' -> (
-    incr pos;
-    let func_stmts = parse_statements text pos check_func_stmts_end in
-    func_stmts
-    )
-  | _ -> failwith ("ParserError: on position " ^ string_of_int !pos ^ " unexpected symbol: " ^ Char.escaped symbol ^ "without '{'.")
+  | '{' ->
+      incr pos;
+      let func_stmts =
+        parse_statements text pos check_func_stmts_end initialised_variables
+      in
+      func_stmts
+  | _ ->
+      failwith
+        ("ParserError: on position " ^ string_of_int !pos
+       ^ " unexpected symbol: " ^ Char.escaped symbol ^ "without '{'.")
 
-let parse_func_structure text pos = 
+let parse_func_structure text pos =
   skip_whitespaces text pos;
-  
-  let ident = identifier text pos in 
-  if String.length ident = 0 then 
-    failwith ("ParseError: unnamed function define.");
+  let ident = identifier text pos in
+  if String.length ident = 0 then
+    failwith "ParseError: unnamed function define.";
   initialised_functions := StringSet.add ident !initialised_functions;
-  
+  let initialised_variables = ref StringSet.empty in
   skip_whitespaces text pos;
   let symbol = text.[!pos] in
   match symbol with
@@ -654,11 +675,12 @@ let parse_func_structure text pos =
       incr pos;
       skip_whitespaces text pos;
       let func_args_expr : string list ref = ref [] in
-      while text.[!pos] != ')'do
+      while text.[!pos] != ')' do
         skip_whitespaces text pos;
         let arg = identifier text pos in
-        if String.length arg = 0 then 
-          failwith ("ParseError: unnamed argument in function define " ^ ident ^ ".");
+        if String.length arg = 0 then
+          failwith
+            ("ParseError: unnamed argument in function define " ^ ident ^ ".");
         func_args_expr := !func_args_expr @ [ arg ];
         initialised_variables := StringSet.add arg !initialised_variables;
         skip_whitespaces text pos;
@@ -667,18 +689,17 @@ let parse_func_structure text pos =
         else
           failwith
             ("ParseError: on position " ^ (!pos |> string_of_int)
-            ^ " couldn't find symbol of closed bracket for close function '"
-            ^ ident ^ "' call: ')' or ','.")
-          
+           ^ " couldn't find symbol of closed bracket for close function '"
+           ^ ident ^ "' call: ')' or ','.")
       done;
+      functions_args_count :=
+        StringMap.add ident (List.length !func_args_expr) !functions_args_count;
       skip_whitespaces text pos;
       match expect_symbol text !pos ')' with
-      | true ->(
+      | true ->
           incr pos;
-          let block_of_func = parse_func_stmts text pos in
-          FuncStruct(ident, !func_args_expr ,block_of_func)
-          )
-
+          let block_of_func = parse_func_stmts text pos initialised_variables in
+          FuncStruct (ident, !func_args_expr, block_of_func)
       | false ->
           failwith
             ("ParseError: on position " ^ (!pos |> string_of_int)
@@ -690,26 +711,27 @@ let parse_func_structure text pos =
        ^ " couldn't find symbol of open bracket of function call: '('. Find \
           symbol: '" ^ Char.escaped symbol ^ "'.")
 
-
 let parse_structures text pos check =
   let all = ref [] in
-  (* initialised_functions := StringSet.of_list []; *)
-  while check text pos && !pos < String.length text do
+  while check text pos do
     skip_whitespaces text pos;
     let ident = identifier text pos in
-    (* print_endline ident;
-    print_endline (">" ^ string_of_int (String.length text)); *)
     match ident with
     | "def" ->
         let result = parse_func_structure text pos in
-        if !pos < String.length text then
-          incr pos;
+        if !pos < String.length text then incr pos;
         all := !all @ [ result ]
     | _ ->
-        failwith ("ParseError: on position " ^ string_of_int !pos ^ " unexpected identifer: " ^ ident ^ ".")
+        failwith
+          ("ParseError: on position " ^ string_of_int !pos
+         ^ " unexpected identifer: " ^ ident ^ ".")
   done;
   !all
+
+let check_program_end text pos =
+  skip_whitespaces text pos;
+  !pos < String.length text
+
 let parse_program text =
   let pos = ref 0 in
-  initialised_variables := StringSet.of_list [];
   parse_structures text pos check_program_end

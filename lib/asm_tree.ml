@@ -30,31 +30,31 @@ type instr =
   | Label of string
   | Jump of string
   | Call of string
-  | Ret 
+  | Ret
 [@@deriving show]
 
-type structure = Function of string * instr list * int StringMap.t
-
-let init_variables (cur_stack_pointer : int ref) (statements : statement list) :
-    int StringMap.t =
-  let variables_stack_position : int StringMap.t ref = ref StringMap.empty in
+let init_variables (variables_stack_position : int StringMap.t ref)
+    (stack_pointer : int ref) (statements : statement list) : int StringMap.t =
   List.iter
     (fun stmt ->
       match stmt with
       | AssignStatement (v, _) ->
-          cur_stack_pointer := !cur_stack_pointer + 8;
+          stack_pointer := !stack_pointer + 8;
           variables_stack_position :=
-            StringMap.add v !cur_stack_pointer !variables_stack_position
+            StringMap.add v !stack_pointer !variables_stack_position
       | _ -> ())
     statements;
   !variables_stack_position
-let max_min_variable_position (variables_stack_position : int StringMap.t) = 
-    let max_pos = ref 16 in
-    let min_pos = ref 24 in
-    StringMap.iter(fun _ value ->  max_pos := max !max_pos value; min_pos := min !min_pos value;) variables_stack_position;
-    if !max_pos < !min_pos then 
-      (!max_pos, !max_pos)
-    else (!min_pos, !max_pos)
+
+let max_min_variable_position (variables_stack_position : int StringMap.t) =
+  let max_pos = ref 16 in
+  let min_pos = ref 24 in
+  StringMap.iter
+    (fun _ value ->
+      max_pos := max !max_pos value;
+      min_pos := min !min_pos value)
+    variables_stack_position;
+  if !max_pos < !min_pos then (!max_pos, !max_pos) else (!min_pos, !max_pos)
 
 let map_assign (op : assign_oper) : oper =
   match op with
@@ -145,27 +145,31 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
           subex_asm_tree
           @ [ Ld (ArgumentReg 1, var_stack_position) ]
           @ op_asm_tree @ save_result_asm_tree)
-  | FuncCall (name, expressions) -> 
-
-    let all_instr = ref [] in 
-    if List.length expressions = 1 then (expr_to_asm_tree (List.nth expressions 0) stack_pointer variables_stack_position @ [Call name]) else ( 
-    List.iter(fun exp -> 
-      all_instr := !all_instr @ (expr_to_asm_tree exp stack_pointer variables_stack_position );
-      stack_pointer := !stack_pointer + 8;
-      all_instr := !all_instr @ [Sd (ArgumentReg 0, !stack_pointer)]
-      )
-      (List.rev expressions);
-    let length = ref( List.length expressions) in
-    let regInd = ref 0 in
-    while !length > 0 && !regInd < 8 do (
-    decr length; 
-    all_instr := !all_instr @ [Ld(ArgumentReg !regInd, !stack_pointer)];
-    incr regInd;
-    stack_pointer := !stack_pointer - 8;
-    
-    ) done;
-    stack_pointer := !stack_pointer - 8 * !length;
-    !all_instr @ [Call name])
+  | FuncCall (name, expressions) ->
+      let all_instr = ref [] in
+      if List.length expressions = 1 then
+        expr_to_asm_tree (List.nth expressions 0) stack_pointer
+          variables_stack_position
+        @ [ Call name ]
+      else (
+        List.iter
+          (fun exp ->
+            all_instr :=
+              !all_instr
+              @ expr_to_asm_tree exp stack_pointer variables_stack_position;
+            stack_pointer := !stack_pointer + 8;
+            all_instr := !all_instr @ [ Sd (ArgumentReg 0, !stack_pointer) ])
+          (List.rev expressions);
+        let length = ref (List.length expressions) in
+        let regInd = ref 0 in
+        while !length > 0 && !regInd < 8 do
+          decr length;
+          all_instr := !all_instr @ [ Ld (ArgumentReg !regInd, !stack_pointer) ];
+          incr regInd;
+          stack_pointer := !stack_pointer - 8
+        done;
+        stack_pointer := !stack_pointer - (8 * !length);
+        !all_instr @ [ Call name ])
   | EmptyExpression -> []
 
 let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
@@ -174,15 +178,14 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
   match stmt with
   | Expression ex -> (
       match ex with
-        | AssignExpression (_, _, _) ->
+      | AssignExpression (_, _, _) ->
           expr_to_asm_tree ex stack_pointer variables_stack_position
-        | FuncCall (_, _)  -> 
+      | FuncCall (_, _) ->
           expr_to_asm_tree ex stack_pointer variables_stack_position
-        | _ ->
+      | _ ->
           failwith
             ("ASTError: unsupported  expression statement: "
-            ^ string_of_expression ex
-            ^ ";."))
+           ^ string_of_expression ex ^ ";."))
   | AssignStatement (v, ex) ->
       let var_stack_position = StringMap.find v !variables_stack_position in
       let subex_asm_tree =
@@ -195,14 +198,20 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
   | If (ex, then_stmts, else_stmts) ->
       if_stmt_to_asm ex then_stmts else_stmts stack_pointer
         variables_stack_position label_count
-  | ReturnStatement ex ->  let min_pos, max_pos = max_min_variable_position !variables_stack_position in 
-  let ex_asm_tree = expr_to_asm_tree ex stack_pointer variables_stack_position
-  in ex_asm_tree @ [
-    Ld( ReturnAddress, min_pos - 16);
-    Ld( FramePointer, min_pos - 8);
-    Addi( StackPointer, StackPointer, max_pos);
-    Ret 
-  ]
+  | ReturnStatement ex ->
+      let min_pos, max_pos =
+        max_min_variable_position !variables_stack_position
+      in
+      let ex_asm_tree =
+        expr_to_asm_tree ex stack_pointer variables_stack_position
+      in
+      ex_asm_tree
+      @ [
+          Ld (ReturnAddress, min_pos - 16);
+          Ld (FramePointer, min_pos - 8);
+          Addi (StackPointer, StackPointer, max_pos);
+          Ret;
+        ]
   | _ -> []
 
 and while_loop_to_asm (ex : expr) (stmts : statement list)
@@ -267,42 +276,59 @@ and stmts_to_asm_tree (stmts : statement list) (stack_pointer : int ref)
     stmts;
   !stmts_asm
 
-let func_stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count =
+let func_stmts_to_asm_tree stmts stack_pointer variables_stack_position
+    label_count =
   let stmts_asm_tree =
     stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count
   in
-  (* must return: Function ("_start", stmts_asm_tree, variables_stack_position) *)
   stmts_asm_tree
 
-(* let label_count = ref 0  *)
-(* TODO: label_count - its not fun info its program info *)
-let func_to_asm_tree name args_name stmts label_count = 
-  
+let func_to_asm_tree name args_name stmts label_count =
   let stack_pointer = ref 16 in
-  (*   in ex_asm_tree @ [
-    Ld( ReturnAddress, min_pos - 16);
-    Ld( FramePointer, min_pos - 8);
-    Addi( StackPointer, StackPointer, max_pos);
-    Ret 
-  ] *)
-  let all_instr = ref [] in
+  let variables_stack_position : int StringMap.t ref = ref StringMap.empty in
+  let index = ref 0 in
+  let all_instr = ref [ Label name ] in
+  while !index < List.length args_name do
+    let arg_name = List.nth args_name !index in
+    (if !index < 8 then (
+       stack_pointer := !stack_pointer + 8;
+       all_instr := !all_instr @ [ Sd (ArgumentReg !index, !stack_pointer) ];
+       variables_stack_position :=
+         StringMap.add arg_name !stack_pointer !variables_stack_position)
+     else
+       let var_pos = -(!index - 7) * 8 in
+       variables_stack_position :=
+         StringMap.add arg_name var_pos !variables_stack_position);
+    incr index
+  done;
+  let variables_stack_position =
+    ref (init_variables variables_stack_position stack_pointer stmts)
+  in
+  let min_pos, _ = max_min_variable_position !variables_stack_position in
+  let func_block =
+    func_stmts_to_asm_tree stmts stack_pointer variables_stack_position
+      label_count
+  in
+  !all_instr
+  @ [
+      Addi (StackPointer, StackPointer, ~- (!stack_pointer));
+      Sd (ReturnAddress, !stack_pointer + min_pos - 16);
+      Sd (FramePointer, !stack_pointer + min_pos - 8);
+      Addi (FramePointer, StackPointer, !stack_pointer);
+    ]
+  @ func_block
 
-  (* List.iter(fun exp -> 
-    all_instr := !all_instr @ (expr_to_asm_tree exp stack_pointer variables_stack_position );
-    stack_pointer := !stack_pointer + 8;
-    all_instr := !all_instr @ [Sd (ArgumentReg 0, !stack_pointer)]
-    )
-    (List.rev expressions); *)
-  let index_reg = ref 0 in
-  while (!index_reg < List.length args_name) && (!index_reg < 8) do (all_instr := !all_instr @ [Sd(ArgumentReg !index_reg, !stack_pointer + (8 * !index_reg))])   variables_stack_position :=
-  (* StringMap.add v stack_pointer !variables_stack_position; done; *)
-
-  (* List.iter(fun instruction -> show_instr instruction |> print_endline) args_name; *)
-   (* List.iter(fun arg -> all_instr := !all_instr @ ) args_name;*)
-  let variables_stack_position = ref (init_variables stack_pointer stmts) in
-  let min_pos, _ = max_min_variable_position !variables_stack_position in 
-  let func_block = func_stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count in
-  [Label name; Addi (StackPointer, StackPointer, (~-(!stack_pointer))); Sd(ReturnAddress, !stack_pointer + min_pos - 16); Sd(FramePointer, !stack_pointer + min_pos - 8); Addi(FramePointer, StackPointer, !stack_pointer)] @ func_block 
-
-
-
+let program_to_asm_tree (structures : structure list) : instr list =
+  let all = ref [] in
+  let label_count = ref 0 in
+  List.iter
+    (fun struct_item ->
+      match struct_item with
+      | FuncStruct (name, args_name, stmts) ->
+          let insts = func_to_asm_tree name args_name stmts label_count in
+          List.iter
+            (fun instruction -> print_endline (show_instr instruction))
+            insts;
+          all := !all @ insts)
+    structures;
+  !all
