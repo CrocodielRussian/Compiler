@@ -130,7 +130,7 @@ and string_of_statement = function
         ^ string_of_statements else_stmts
         ^ "\nendif"
 
-let initialised_functions = ref (StringSet.of_list [ "print_int" ])
+let initialised_functions = ref (StringSet.of_list [ "_start"; "print_int" ])
 
 let functions_args_count : int StringMap.t ref =
   ref StringMap.(empty |> add "print_int" 1)
