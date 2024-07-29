@@ -11,16 +11,8 @@ module Main = struct
     close_out oc
   let text =
     {|
-  def sum(a,b,c) {
-    print_int(a);
-    print_int(b);
-    print_int(c);
-    return a + b + c;
-  }
-  
   def main() {
-    var b := sum(10 + 20, 90 - 30, -0); 
-    print_int(b);
+    var b := 10;
     return 0;
   }
   |}
