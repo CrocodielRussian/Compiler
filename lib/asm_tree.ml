@@ -1,5 +1,5 @@
 open Parser
-
+open Exceptions
 type reg =
   | TemporaryReg of int
   | ArgumentReg of int
@@ -68,10 +68,8 @@ let map_assign (op : assign_oper) : oper =
   | MultiplyAssign -> Multiply
   | DivideAssign -> Divide
   | InvalidAssing ->
-      failwith
-        ("ASTError: unexpected assign operator: "
-        ^ string_of_assign_operator op
-        ^ ".")
+    throw_except(ASTError("unexpected assign operator: "
+        ^ string_of_assign_operator op))
 
 let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
   match op with
@@ -87,10 +85,8 @@ let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
   | Unequal ->
       [ Sub (reg1, reg2, reg1); Seqz (reg1, reg2); Xori (reg1, reg2, 1) ]
   | Invalid ->
-      failwith
-        ("ASTError: unexpected binary operator: "
-        ^ string_of_binary_operator op
-        ^ ".")
+    throw_except(ASTError("unexpected binary operator: "
+    ^ string_of_binary_operator op))
 
 let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
     (variables_stack_position : int StringMap.t ref) : instr list =
@@ -107,10 +103,8 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
       | Plus -> subex_asm_tree
       | Minus -> subex_asm_tree @ [ Neg (ArgumentReg 0, ArgumentReg 0) ]
       | _ ->
-          failwith
-            ("ASTError: unexpected unary operator: "
-            ^ string_of_binary_operator op
-            ^ "."))
+          throw_except(ASTError("unexpected unary operator: "
+            ^ string_of_binary_operator op)))
   | Binary (subex1, op, subex2) ->
       let subex1_asm_tree =
         expr_to_asm_tree subex1 stack_pointer variables_stack_position
@@ -140,10 +134,8 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
       match op with
       | DefaultAssign -> subex_asm_tree @ save_result_asm_tree
       | InvalidAssing ->
-          failwith
-            ("ASTError: unexpected assign operator: "
-            ^ string_of_assign_operator op
-            ^ ".")
+        throw_except(ASTError("unexpected assign operator: "
+            ^ string_of_assign_operator op))
       | _ ->
           let op_asm_tree =
             binop_to_asm (map_assign op) (ArgumentReg 0) (ArgumentReg 1)
@@ -191,9 +183,8 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
       | FuncCall (_, _) ->
           expr_to_asm_tree ex stack_pointer variables_stack_position
       | _ ->
-          failwith
-            ("ASTError: unsupported  expression statement: "
-           ^ string_of_expression ex ^ ";."))
+          throw_except(ASTError("unsupported  expression statement: "
+          ^ string_of_expression ex ^ ";")))
   | AssignStatement (v, ex) ->
       let var_stack_position = StringMap.find v !variables_stack_position in
       let subex_asm_tree =
@@ -296,8 +287,8 @@ let func_to_asm_tree name args_name stmts label_count =
   let all_instr = ref [] in
   while !index < List.length args_name do
     let arg_name = List.nth args_name !index in
+    stack_pointer := !stack_pointer + 8;
     (if !index < 8 then (
-       stack_pointer := !stack_pointer + 8;
        all_instr :=
          !all_instr @ [ FrameSd (ArgumentReg !index, !stack_pointer) ];
        variables_stack_position :=

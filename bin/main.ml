@@ -11,10 +11,13 @@ module Main = struct
     close_out oc
   let text =
     {|
-  def main() {
-    var b := 10;
+  de main() {
+    var a := combinations(10, 5);
+    print_int(a);
+    print_int(combinations_nw(10, 5));
     return 0;
   }
+
   |}
 
   let compile out_filename =
