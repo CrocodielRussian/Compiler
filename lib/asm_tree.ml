@@ -18,12 +18,15 @@ type instr =
   | StackPointerSd of reg * int
   | Mv of reg * reg
   | Neg of reg * reg
+  | Not of reg * reg
   | Add of reg * reg * reg
   | Mul of reg * reg * reg
   | Sub of reg * reg * reg
   | Div of reg * reg * reg
   | Sgt of reg * reg * reg
   | Slt of reg * reg * reg
+  | And of reg * reg * reg
+  | Or of reg * reg * reg
   | Xori of reg * reg * int
   | Addi of reg * reg * int
   | Seqz of reg * reg
@@ -37,8 +40,8 @@ type instr =
   | EnvCall
 [@@deriving show]
 
-let init_variables (variables_stack_position : int StringMap.t ref)
-    (stack_pointer : int ref) (statements : statement list) : int StringMap.t =
+let rec init_variables (variables_stack_position : int StringMap.t ref)
+    (stack_pointer : int ref) (statements : statement list) =
   List.iter
     (fun stmt ->
       match stmt with
@@ -46,9 +49,13 @@ let init_variables (variables_stack_position : int StringMap.t ref)
           stack_pointer := !stack_pointer + 8;
           variables_stack_position :=
             StringMap.add v !stack_pointer !variables_stack_position
+      | While (_, stmts) ->
+          init_variables variables_stack_position stack_pointer stmts
+      | If (_, stmts1, stmts2) ->
+          init_variables variables_stack_position stack_pointer stmts1;
+          init_variables variables_stack_position stack_pointer stmts2
       | _ -> ())
-    statements;
-  !variables_stack_position
+    statements
 
 let max_min_variable_position (variables_stack_position : int StringMap.t) =
   let max_pos = ref 16 in
@@ -83,10 +90,12 @@ let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
   | Low -> [ Slt (reg1, reg2, reg1) ]
   | MoreOrEqual -> [ Slt (reg1, reg2, reg1); Xori (reg1, reg1, 1) ]
   | LowOrEqual -> [ Sgt (reg1, reg2, reg1); Xori (reg1, reg1, 1) ]
-  | Equal -> [ Sub (reg1, reg2, reg1); Seqz (reg1, reg2) ]
+  | Equal -> [ Sub (reg1, reg2, reg1); Seqz (reg1, reg1) ]
   | Unequal ->
-      [ Sub (reg1, reg2, reg1); Seqz (reg1, reg2); Xori (reg1, reg1, 1) ]
-  | Invalid ->
+      [ Sub (reg1, reg2, reg1); Seqz (reg1, reg1); Xori (reg1, reg1, 1) ]
+  | AndOper -> [ And (reg1, reg2, reg1) ]
+  | OrOper -> [ Or (reg1, reg2, reg1) ]
+  | _ ->
       failwith
         ("ASTError: unexpected binary operator: "
         ^ string_of_binary_operator op
@@ -106,6 +115,7 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
       match op with
       | Plus -> subex_asm_tree
       | Minus -> subex_asm_tree @ [ Neg (ArgumentReg 0, ArgumentReg 0) ]
+      | NotOper -> subex_asm_tree @ [ Not (ArgumentReg 0, ArgumentReg 0) ]
       | _ ->
           failwith
             ("ASTError: unexpected unary operator: "
@@ -328,9 +338,7 @@ let func_to_asm_tree name args_name stmts label_count =
          StringMap.add arg_name var_pos !variables_stack_position);
     incr index
   done;
-  let variables_stack_position =
-    ref (init_variables variables_stack_position stack_pointer stmts)
-  in
+  init_variables variables_stack_position stack_pointer stmts;
   let func_block =
     func_stmts_to_asm_tree stmts stack_pointer variables_stack_position
       label_count
