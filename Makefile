@@ -27,3 +27,6 @@ program: $(TARGET_DIR)main.o $(TARGET_DIR)stdlib
 
 run: program
 	qemu-riscv64 -L /usr/riscv64-linux-gnu -cpu rv64 ./$(PROGRAM_NAME)
+
+debug: program
+	qemu-riscv64 -L /usr/riscv64-linux-gnu -cpu rv64 -g 1234 ./$(PROGRAM_NAME)

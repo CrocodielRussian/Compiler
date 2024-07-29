@@ -12,16 +12,41 @@ module Main = struct
 
   let text =
     {|
-  def sum(a,b,c) {
-    print_int(a);
-    print_int(b);
-    print_int(c);
-    return a + b + c;
+
+  def sum(a,b,c,d,e,f,g,h,i,k) {
+    return a + b + c + d + e + g + f + h + i + k;
+  }
+
+  def bigsum(a,b,c,d,e,f,g,h,i,k, o,p) {
+    return a + b + c + d + e + g + f + h + i + k + o + p;
   }
   
+  def factorial(n) {
+    var acc:=1;
+    while n>1 do
+        acc:=acc*n;
+        n:=n-1;
+    done
+    return acc;
+}
+
+  def combinations(n,k) {
+      return factorial(n) / (factorial(k) * factorial(n - k));
+  }
+
+  def nsum(n) {
+    if n <= 0 then 
+      return 0;
+    endif
+    
+    return n + nsum(n - 1);
+  }
+
   def main() {
-    var b := sum(10 + 20, 90 - 30, -0); 
-    print_int(b);
+    print_int(sum(1,2,3,4,5,6,7,8,9,10));
+    print_int(bigsum(0,1,2,3,4,5,6,7,8,9,10, 11));
+    print_int(combinations(10, 5));
+    print_int(nsum(10));
     return 0;
   }
   |}
