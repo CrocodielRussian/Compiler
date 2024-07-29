@@ -106,6 +106,7 @@ let rec optimize_stmt (stmt : statement) =
   | If (ex, then_stmts, else_stmts) ->
       If (optimize_expr ex, optimize_stmts then_stmts, optimize_stmts else_stmts)
   | ReturnStatement _ -> stmt
+  | BreakStatement -> stmt
   | EmptyStatement -> stmt
 
 

@@ -11,10 +11,14 @@ module Main = struct
     close_out oc
   let text =
     {|
-  de main() {
-    var a := combinations(10, 5);
-    print_int(a);
-    print_int(combinations_nw(10, 5));
+  def main() {
+    var a := 0;
+    while(a < 10) do
+      if(a > 5) then
+        break
+      endif
+      a += 1;
+    done
     return 0;
   }
 
@@ -28,10 +32,10 @@ module Main = struct
 
   let () = compile "lang/main.s"
   (* let program = parse_program text in
-     (* List.iter (fun st -> show_structure st |> print_endline) program; *)
-     let instructions = program_to_asm_tree program in
-     (* List.iter
+     List.iter (fun st -> show_structure st |> print_endline) program; *)
+     (* let instructions = program_to_asm_tree program in
+     List.iter
         (fun instruction -> print_endline (show_instr instruction))
-        instructions; *)
+        instructions;
      print_endline (string_of_instr_list instructions) *)
 end

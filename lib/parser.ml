@@ -41,6 +41,7 @@ type expr =
 type statement =
   | Expression of expr
   | ReturnStatement of expr
+  | BreakStatement
   | AssignStatement of string * expr (* a := 10 + 20;*)
   | EmptyStatement
   | While of expr * statement list
@@ -111,6 +112,7 @@ let rec string_of_statements stmts =
 
 and string_of_statement = function
   | EmptyStatement -> ""
+  | BreakStatement -> "break;"
   | ReturnStatement e -> "return " ^ string_of_expression e ^ ";"
   | Expression e -> string_of_expression e ^ ";"
   | AssignStatement (v, e2) ->
@@ -608,6 +610,8 @@ and parse_statements text pos check initialised_variables =
         | Expression ex -> all := !all @ [ ReturnStatement ex ]
         | __ ->
             throw_except(ParserError(!count_of_newline, !cur_pos_on_line, ("unexpected expression " ^ string_of_statement result))))
+    | "break" -> 
+         all := !all @ [ BreakStatement]
     | _ ->
         pos := !pos - String.length ident;
         let result = parse_expr_statement text pos initialised_variables in

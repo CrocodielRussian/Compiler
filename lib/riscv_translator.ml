@@ -55,6 +55,7 @@ let string_of_instr (instruction : instr) =
   | Jump l -> Printf.sprintf "j\t%s" l
   | Call l -> Printf.sprintf "call\t%s" l
   | Ret -> "ret "
+  | Nop -> "nop"
   | EnvCall -> "ecall"
   | GlobalModifier name -> Printf.sprintf "\n.global %s" name
 

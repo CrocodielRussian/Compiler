@@ -34,6 +34,7 @@ type instr =
   | Jump of string
   | Call of string
   | Ret
+  | Nop
   | EnvCall
 [@@deriving show]
 
@@ -79,11 +80,11 @@ let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
   | Divide -> [ Div (reg1, reg2, reg1) ]
   | More -> [ Sgt (reg1, reg2, reg1) ]
   | Low -> [ Slt (reg1, reg2, reg1) ]
-  | MoreOrEqual -> [ Slt (reg1, reg2, reg1); Xori (reg1, reg2, 1) ]
-  | LowOrEqual -> [ Sgt (reg1, reg2, reg1); Xori (reg1, reg2, 1) ]
+  | MoreOrEqual -> [ Slt (reg1, reg2, reg1); Xori (reg1, reg1, 1) ]
+  | LowOrEqual -> [ Sgt (reg1, reg2, reg1); Xori (reg1, reg1, 1) ]
   | Equal -> [ Sub (reg1, reg2, reg1); Seqz (reg1, reg2) ]
   | Unequal ->
-      [ Sub (reg1, reg2, reg1); Seqz (reg1, reg2); Xori (reg1, reg2, 1) ]
+      [ Sub (reg1, reg2, reg1); Seqz (reg1, reg2); Xori (reg1, reg1, 1) ]
   | Invalid ->
     throw_except(ASTError("unexpected binary operator: "
     ^ string_of_binary_operator op))
@@ -209,6 +210,7 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
           Addi (StackPointer, StackPointer, max_pos);
           Ret;
         ]
+  | BreakStatement -> [Nop]
   | _ -> []
 
 and while_loop_to_asm (ex : expr) (stmts : statement list)
