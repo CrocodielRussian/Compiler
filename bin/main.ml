@@ -11,15 +11,11 @@ module Main = struct
     close_out oc
   let text =
     {|
-<<<<<<< HEAD
   def main() {
-    var a := 0;
-    while(a < 10) do
-      if(a > 5) then
-        break
-      endif
-      a += 1;
-    done
+    var a := 10;
+    if(a > 10) then
+      print_int(10);  
+    endif
     return 0;
   }
 
