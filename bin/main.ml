@@ -11,6 +11,7 @@ module Main = struct
     close_out oc
   let text =
     {|
+<<<<<<< HEAD
   def main() {
     var a := 0;
     while(a < 10) do
@@ -38,4 +39,5 @@ module Main = struct
         (fun instruction -> print_endline (show_instr instruction))
         instructions;
      print_endline (string_of_instr_list instructions) *)
+
 end

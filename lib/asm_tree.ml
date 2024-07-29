@@ -147,9 +147,20 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
   | FuncCall (name, expressions) ->
       let all_instr = ref [] in
       if List.length expressions = 1 then
-        expr_to_asm_tree (List.nth expressions 0) stack_pointer
-          variables_stack_position
-        @ [ Call name ]
+        let expr_asm_tree =
+          expr_to_asm_tree (List.nth expressions 0) stack_pointer
+            variables_stack_position
+        in
+        let buffer_size = !stack_pointer - 16 in
+        expr_asm_tree
+        @
+        if buffer_size > 0 then
+          [
+            Addi (StackPointer, StackPointer, ~-buffer_size);
+            Call name;
+            Addi (StackPointer, StackPointer, buffer_size);
+          ]
+        else [ Call name ]
       else (
         List.iter
           (fun exp ->
@@ -169,8 +180,17 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
           incr regInd;
           stack_pointer := !stack_pointer - 8
         done;
-        stack_pointer := !stack_pointer - (8 * !length);
-        !all_instr @ [ Call name ])
+        let buffer_size = 8 * !length in
+        stack_pointer := !stack_pointer - buffer_size;
+        !all_instr
+        @
+        if buffer_size > 0 then
+          [
+            Addi (StackPointer, StackPointer, ~-buffer_size);
+            Call name;
+            Addi (StackPointer, StackPointer, buffer_size);
+          ]
+        else [ Call name ])
   | EmptyExpression -> []
 
 let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
@@ -296,7 +316,7 @@ let func_to_asm_tree name args_name stmts label_count =
        variables_stack_position :=
          StringMap.add arg_name !stack_pointer !variables_stack_position)
      else
-       let var_pos = -(!index - 7) * 8 in
+       let var_pos = -(!index - 8) * 8 in
        variables_stack_position :=
          StringMap.add arg_name var_pos !variables_stack_position);
     incr index
