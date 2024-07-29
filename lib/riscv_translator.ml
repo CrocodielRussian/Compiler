@@ -12,13 +12,13 @@ let string_of_reg (register : reg) =
 
 let string_of_instr (instruction : instr) =
   match instruction with
-  | Li (r, n) -> Printf.sprintf "li\t%s, %d" (string_of_reg r) n
-  | FrameLd (r, n) -> Printf.sprintf "ld\t%s, %d(fp)" (string_of_reg r) ~-n
-  | FrameSd (r, n) -> Printf.sprintf "sd\t%s, %d(fp)" (string_of_reg r) ~-n
+  | Li (r, n) -> Printf.sprintf "li\t\t%s, %d" (string_of_reg r) n
+  | FrameLd (r, n) -> Printf.sprintf "ld\t\t%s, %d(fp)" (string_of_reg r) ~-n
+  | FrameSd (r, n) -> Printf.sprintf "sd\t\t%s, %d(fp)" (string_of_reg r) ~-n
   | StackPointerLd (r, n) ->
-      Printf.sprintf "ld\t%s, %d(sp)" (string_of_reg r) ~-n
+      Printf.sprintf "ld\t\t%s, %d(sp)" (string_of_reg r) ~-n
   | StackPointerSd (r, n) ->
-      Printf.sprintf "sd\t%s, %d(sp)" (string_of_reg r) ~-n
+      Printf.sprintf "sd\t\t%s, %d(sp)" (string_of_reg r) ~-n
   | Mv (r1, r2) ->
       Printf.sprintf "mv\t%s, %s" (string_of_reg r1) (string_of_reg r2)
   | Neg (r1, r2) ->
