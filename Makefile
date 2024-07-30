@@ -6,9 +6,9 @@ COMPILE_FLAGS = -march=rv64gc
 SRC_DIR = lang/
 TARGET_DIR = target/
 PROGRAM_NAME = program.exe
-
+DUNE_ARGS = 
 all:
-	dune exec compiler
+	dune exec compiler -- $(DUNE_ARGS)
 	mkdir -p $(TARGET_DIR)
 	make run
 

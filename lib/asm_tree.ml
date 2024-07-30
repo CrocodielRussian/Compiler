@@ -100,6 +100,7 @@ let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
   | _ -> throw_except(ASTError("unexpected binary operator: "
   ^ string_of_binary_operator op))
 
+
 let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
     (variables_stack_position : int StringMap.t ref) : instr list =
   match ex with

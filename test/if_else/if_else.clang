@@ -1,0 +1,20 @@
+  def main() {
+    var a := 10;
+  
+    if(a > 10) then
+      print_int(10);
+    else
+      print_int(0);
+    endif
+    
+    if(a <= 10) then
+      a += 20;
+      a /= 2;
+    else
+      a += 6;
+      a /= 2;
+    endif
+    print_int(a);
+    
+    return 0;
+  }

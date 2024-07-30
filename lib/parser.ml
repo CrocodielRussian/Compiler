@@ -76,7 +76,8 @@ let string_of_binary_operator = function
   | AndOper -> "&&"
   | OrOper -> "||"
   | Invalid -> throw_except(ASTError("unexpected unary operator"))
-  | _ ->  throw_except(ASTError("unexpected unary operator"))
+  | _ -> throw_except(ASTError("unexpected binary operator"))
+
 [@@deriving show]
 
 let string_of_assign_operator = function
@@ -415,10 +416,10 @@ and parse_simplest_expr text pos initialised_variables =
         incr pos;
 incr cur_pos_on_line;
         Unary (Minus, parse_simplest_expr text pos initialised_variables))
-    | '+' ->(
+    | '+' ->
         incr pos;
         incr cur_pos_on_line;
-        parse_simplest_expr text pos initialised_variables)
+        parse_simplest_expr text pos initialised_variables
     | '!' ->
         incr pos;
         incr cur_pos_on_line;
