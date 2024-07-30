@@ -1,14 +1,50 @@
+(env
+ (_ 
+  (flags
+   (:standard -w -34))))
 (cram
- (deps if_else_check.exe io.exe))
+ (deps io.o if_else.exe if_without_else.exe))
 
 (rule
- (targets if_else_check.exe)
+ (targets io.o)
+ (action
+  (progn
+   (run riscv64-linux-gnu-as -march=rv64gc %{project_root}/lang/stdlib/io.s -o %{targets})
+  )
+ )
+)
+
+(rule
+ (targets if_else.exe)
  (deps
-  (:src if_else_check.s))
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang if_else.clang)
+  (:lib io.o)
+ )
  (mode
   (promote (until-clean)))
  (action
   (progn
-   (run riscv64-linux-gnu-as -march=rv64gc %{src} -o if_else_check.o)
-   (run riscv64-linux-gnu-as -march=rv64gc io.s -o io.o)
-   (run riscv64-linux-gnu-ld if_else_check.o io.o -o %{targets}))))
+   (run %{main} %{clang} if_else.s)
+   (run riscv64-linux-gnu-as -march=rv64gc if_else.s -o if_else.o)
+   (run riscv64-linux-gnu-ld if_else.o %{lib} -o %{targets})
+  )
+ )
+)
+(rule
+ (targets if_without_else.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang if_without_else.clang)
+  (:lib io.o)
+ )
+ (mode  
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} if_without_else.s)
+   (run riscv64-linux-gnu-as -march=rv64gc if_without_else.s -o if_without_else.o)
+   (run riscv64-linux-gnu-ld if_without_else.o %{lib} -o %{targets})
+  )
+ )
+)

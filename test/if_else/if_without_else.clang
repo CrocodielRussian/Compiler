@@ -1,0 +1,9 @@
+def main(){
+    var a := 10;
+    
+    if(a > 8) then
+      print_int(10);  
+    endif
+
+    return 0;
+}

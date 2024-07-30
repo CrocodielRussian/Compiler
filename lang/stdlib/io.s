@@ -76,6 +76,7 @@ read_char:
     la a1, buffer     # Load the address of the buffer into a1
     li a2, 1          # Number of bytes to read
 
+
     # Perform the read system call
     li a7, 63         # System call number for read (63 in RISC-V)
     ecall
