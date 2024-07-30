@@ -4,33 +4,30 @@ open Compiler.Asm_tree
 open Compiler.Riscv_translator
 
 module Main = struct
+  (* module Unix = UnixLabels *)
+  let input_file = Sys.argv.(1)
+  let output_file = Sys.argv.(2)
+
+  let read_program_file filename  = 
+    let lines = ref [] in
+    let chan = open_in filename in
+    try
+      while true; do
+        lines := input_line chan :: !lines
+      done; !lines
+    with End_of_file ->
+      close_in chan;
+      List.rev !lines ;;
+
+  
+    
   let append_to_file filename content =
     let oc = open_out filename in
     output_string oc content;
     close_out oc
-
-  let text =
-    {|
-    def medisum(a, b) {
-      return (a + b) / 2;
-    }
-
-    def main() {
-      23+-12;
-      var a := 10 + -0;
-      a := medisum(read_int() + (a := read_int()), -a + read_int()) + read_int();
-      var b := 10 + print_int(a);
-      print_int(a + b * (2 + 9));
-      b + -a + read_int();
-
-      if read_int() > 10 then print_int(0); else print_int(1); endif
-      while read_int() > 10 do <stmts> done
-      
-      while true do if (read_int() > 10) then <stmts> else break endif
-      return 0 + 10;
-    }
-    |}
-
+  let text = read_program_file input_file |> (String.concat "\n" )
+  let try_read in_filename = 
+    read_program_file in_filename
   let compile out_filename =
     let content =
       parse_program text |> optimize_ast |> program_to_asm_tree
@@ -38,5 +35,7 @@ module Main = struct
     in
     append_to_file out_filename content
 
-  let () = compile "lang/main.s"
-end
+
+  let () =  compile output_file
+  end
+  

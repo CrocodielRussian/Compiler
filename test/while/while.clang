@@ -1,0 +1,28 @@
+def main() {
+    var a := 0;
+    while(a <= 5) do
+      print_int(a);
+      a += 1;
+    done
+    a := 0;
+    while(a <= 10) do 
+      if(a >= 3) then
+        break  
+      endif
+      print_int(a);
+      a += 1;
+    done
+
+    a := 0; 
+    var b := 1;
+    var n := 5;
+    while n > 1 do 
+      b := a + b;
+      a := b - a;
+      n := n - 1;
+    done
+    print_int(a);
+    print_int(b);
+    
+    return 0;
+ }

@@ -126,6 +126,7 @@ let rec const_optimize_stmt (stmt : statement) =
           const_optimize_stmts then_stmts,
           const_optimize_stmts else_stmts )
   | ReturnStatement expr -> ReturnStatement (const_optimize_expr expr)
+  | BreakStatement -> stmt
   | EmptyStatement -> stmt
 
 and const_optimize_stmts (stmts : statement list) : statement list =
@@ -241,6 +242,7 @@ let rec func_call_optimize_stmt (stmt : statement)
       in
       !result_statements @ [ ReturnStatement optisubex ]
   | EmptyStatement -> []
+  | BreakStatement -> [stmt]
 
 and func_call_optimize_stmts (stmts : statement list)
     (func_call_var_indexes : int StringMap.t ref) : statement list =

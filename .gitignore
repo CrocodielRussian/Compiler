@@ -6,3 +6,4 @@ compiler.opam
 lang/*.s
 *.s
 *.exe
+*.txt
