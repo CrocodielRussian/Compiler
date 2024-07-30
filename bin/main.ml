@@ -11,11 +11,38 @@ module Main = struct
     close_out oc
   let text =
     {|
+<<<<<<< HEAD
   def main() {
     var a := 10;
     if(a > 10) then
       print_int(10);  
     endif
+=======
+  def read_int() {
+    var acc := 0;
+    var is_negative := 0;
+    var code := read_char();
+    if code == 45 || code == 43 then
+      is_negative := code == 45;
+      code := read_char() - 48;
+    else
+      code := code - 48;
+    endif
+    while 0 <= code && code <= 9 do
+      acc := acc * 10 + code;
+      code := read_char() - 48;
+    done
+    if is_negative then
+      acc *= -1;
+    endif
+    return acc;
+  }
+
+  def main() {
+    var a := read_int();
+    var b := read_int();
+    print_int(a + b);
+>>>>>>> 6fbfb6c644e67c1636a9e16dacd582717a5b4280
     return 0;
   }
 

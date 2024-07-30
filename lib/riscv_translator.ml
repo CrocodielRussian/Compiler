@@ -23,6 +23,8 @@ let string_of_instr (instruction : instr) =
       Printf.sprintf "mv\t%s, %s" (string_of_reg r1) (string_of_reg r2)
   | Neg (r1, r2) ->
       Printf.sprintf "neg\t%s, %s" (string_of_reg r1) (string_of_reg r2)
+  | Not (r1, r2) ->
+      Printf.sprintf "not\t%s, %s" (string_of_reg r1) (string_of_reg r2)
   | Add (r1, r2, r3) ->
       Printf.sprintf "add\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2)
         (string_of_reg r3)
@@ -41,12 +43,18 @@ let string_of_instr (instruction : instr) =
   | Slt (r1, r2, r3) ->
       Printf.sprintf "slt\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2)
         (string_of_reg r3)
+  | And (r1, r2, r3) ->
+      Printf.sprintf "and\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2)
+        (string_of_reg r3)
+  | Or (r1, r2, r3) ->
+      Printf.sprintf "or\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2)
+        (string_of_reg r3)
   | Xori (r1, r2, n) ->
       Printf.sprintf "xori\t%s, %s, %d" (string_of_reg r1) (string_of_reg r2) n
   | Addi (r1, r2, n) ->
       Printf.sprintf "addi\t%s, %s, %d" (string_of_reg r1) (string_of_reg r2) n
   | Seqz (r1, r2) ->
-      Printf.sprintf "segz\t%s, %s" (string_of_reg r1) (string_of_reg r2)
+      Printf.sprintf "seqz\t%s, %s" (string_of_reg r1) (string_of_reg r2)
   | Beq (r1, r2, l) ->
       Printf.sprintf "beq\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2) l
   | Bne (r1, r2, l) ->
