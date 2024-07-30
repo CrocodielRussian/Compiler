@@ -1,5 +1,6 @@
 open Parser
 open Exceptions
+
 let bool_to_int = function true -> 1 | false -> 0
 let bool_of_int num = num != 0
 
@@ -9,7 +10,9 @@ let eval_binary_operation (n1 : int) (op : oper) (n2 : int) =
   | Minus -> n1 - n2
   | Multiply -> n1 * n2
   | Divide -> (
-      match n2 with 0 -> throw_except(LogicErrorMath("divide by zero")) | _ -> n1 / n2) 
+      match n2 with
+      | 0 -> throw_except (LogicErrorMath "divide by zero")
+      | _ -> n1 / n2)
   | Low -> bool_to_int (n1 < n2)
   | LowOrEqual -> bool_to_int (n1 <= n2)
   | More -> bool_to_int (n1 > n2)
@@ -18,7 +21,7 @@ let eval_binary_operation (n1 : int) (op : oper) (n2 : int) =
   | Unequal -> bool_to_int (n1 != n2)
   | AndOper -> bool_to_int (bool_of_int n1 || bool_of_int n2)
   | OrOper -> bool_to_int (bool_of_int n1 || bool_of_int n2)
-  | Invalid -> throw_except(ASTError("unexpected operator"))
+  | _ -> throw_except (ASTError "unexpected operator")
 
 let valid_op_const (op : oper) =
   match op with Plus -> 0 | Multiply -> 1 | _ -> 0
@@ -81,7 +84,8 @@ and optimize_unary_expr (op : oper) (subex : expr) =
       | Number n -> Number (-n)
       | _ -> Unary (Minus, optisubex))
   | _ ->
-      throw_except(ASTError("unexpected unary operator: " ^ string_of_binary_operator op))
+      throw_except
+        (ASTError ("unexpected unary operator: " ^ string_of_binary_operator op))
 
 and optimize_binary_expr (subex1 : expr) (op : oper) (subex2 : expr) =
   let optisubex1 = optimize_expr subex1 in

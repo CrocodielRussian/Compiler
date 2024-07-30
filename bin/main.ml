@@ -9,28 +9,9 @@ module Main = struct
     let oc = open_out filename in
     output_string oc content;
     close_out oc
+
   let text =
     {|
-  def read_int() {
-    var acc := 0;
-    var is_negative := 0;
-    var code := read_char();
-    if code == 45 || code == 43 then
-      is_negative := code == 45;
-      code := read_char() - 48;
-    else
-      code := code - 48;
-    endif
-    while 0 <= code && code <= 9 do
-      acc := acc * 10 + code;
-      code := read_char() - 48;
-    done
-    if is_negative then
-      acc *= -1;
-    endif
-    return acc;
-  }
-
   def main() {
     var a := read_int();
     var b := read_int();
