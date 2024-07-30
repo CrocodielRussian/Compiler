@@ -1,6 +1,7 @@
 open Parser
 open Exceptions
 let bool_to_int = function true -> 1 | false -> 0
+let bool_of_int num = num != 0
 
 let eval_binary_operation (n1 : int) (op : oper) (n2 : int) =
   match op with
@@ -15,6 +16,8 @@ let eval_binary_operation (n1 : int) (op : oper) (n2 : int) =
   | MoreOrEqual -> bool_to_int (n1 >= n2)
   | Equal -> bool_to_int (n1 == n2)
   | Unequal -> bool_to_int (n1 != n2)
+  | AndOper -> bool_to_int (bool_of_int n1 || bool_of_int n2)
+  | OrOper -> bool_to_int (bool_of_int n1 || bool_of_int n2)
   | Invalid -> throw_except(ASTError("unexpected operator"))
 
 let valid_op_const (op : oper) =
@@ -107,7 +110,6 @@ let rec optimize_stmt (stmt : statement) =
       If (optimize_expr ex, optimize_stmts then_stmts, optimize_stmts else_stmts)
   | ReturnStatement _ -> stmt
   | EmptyStatement -> stmt
-
 
 and optimize_stmts (stmts : statement list) : statement list =
   let new_stmts = ref [] in

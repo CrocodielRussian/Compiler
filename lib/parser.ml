@@ -14,6 +14,9 @@ type oper =
   | MoreOrEqual
   | Equal
   | Unequal
+  | AndOper
+  | OrOper
+  | NotOper
   | Invalid
 [@@deriving show]
 
@@ -53,6 +56,7 @@ type structure = FuncStruct of string * string list * statement list
 let string_of_unary_operator = function
   | Plus -> "+"
   | Minus -> "-"
+  | NotOper -> "!"
   | Invalid -> throw_except(ASTError("unexpected operator"))
   | _ -> throw_except(ASTError("unexpected unary operator"))
 [@@deriving show]
@@ -68,6 +72,8 @@ let string_of_binary_operator = function
   | MoreOrEqual -> ">="
   | Equal -> "=="
   | Unequal -> "!="
+  | AndOper -> "&&"
+  | OrOper -> "||"
   | Invalid -> throw_except(ASTError("unexpected unary operator"))
 [@@deriving show]
 
@@ -130,10 +136,11 @@ and string_of_statement = function
         ^ string_of_statements else_stmts
         ^ "\nendif"
 
-let initialised_functions = ref (StringSet.of_list [ "_start"; "print_int" ])
+let initialised_functions =
+  ref (StringSet.of_list [ "_start"; "print_int"; "read_char" ])
 
 let functions_args_count : int StringMap.t ref =
-  ref StringMap.(empty |> add "print_int" 1)
+  ref StringMap.(empty |> add "print_int" 1 |> add "read_char" 0)
 
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
@@ -261,10 +268,10 @@ incr cur_pos_on_line;
           match symbol with
           | '!' ->
               pos := !pos + 2;
-              LowOrEqual
+              Unequal
           | '=' ->
               pos := !pos + 2;
-              MoreOrEqual
+              Equal
           | _ -> Invalid
         else
           throw_except(ParserError(!count_of_newline, !cur_pos_on_line, ("find unexpected compare operator")))
@@ -312,6 +319,19 @@ incr cur_pos_on_line;
           | _ -> Invalid)
     | _ -> Invalid
 
+let parse_bool_operation text pos =
+  skip_whitespaces text pos;
+  if !pos + 2 > String.length text then Invalid
+  else
+    match String.sub text !pos 2 with
+    | "&&" ->
+        pos := !pos + 2;
+        AndOper
+    | "||" ->
+        pos := !pos + 2;
+        OrOper
+    | _ -> Invalid
+
 let rec parse_expr (text : string) (pos : int ref)
     (initialised_variables : StringSet.t ref) : expr =
   skip_whitespaces text pos;
@@ -323,13 +343,27 @@ let rec parse_expr (text : string) (pos : int ref)
       match operation with
       | InvalidAssing ->
           pos := start_pos;
-          parse_compare_expr text pos initialised_variables
+          parse_bool_expr text pos initialised_variables
       | _ ->
           AssignExpression
             (v, operation, parse_expr text pos initialised_variables))
   | _ ->
       pos := start_pos;
-      parse_compare_expr text pos initialised_variables
+      parse_bool_expr text pos initialised_variables
+
+and parse_bool_expr text pos initialised_variables =
+  skip_whitespaces text pos;
+  let expression = ref (parse_compare_expr text pos initialised_variables) in
+  let operation = ref (parse_bool_operation text pos) in
+  while !pos < String.length text && !operation != Invalid do
+    expression :=
+      Binary
+        ( !expression,
+          !operation,
+          parse_compare_expr text pos initialised_variables );
+    operation := parse_bool_operation text pos
+  done;
+  !expression
 
 and parse_compare_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -380,11 +414,15 @@ incr cur_pos_on_line;
         Unary (Minus, parse_simplest_expr text pos initialised_variables))
     | '+' ->(
         incr pos;
-incr cur_pos_on_line;
+        incr cur_pos_on_line;
         parse_simplest_expr text pos initialised_variables)
+    | '!' ->
+        incr pos;
+        incr cur_pos_on_line;
+        Unary (NotOper, parse_simplest_expr text pos initialised_variables)
     | '(' ->
         incr pos;
-incr cur_pos_on_line;
+        incr cur_pos_on_line;
         let result_of_searching = parse_expr text pos initialised_variables in
         skip_whitespaces text pos;
         if !pos < String.length text && text.[!pos] = ')' then (
@@ -706,4 +744,7 @@ let check_program_end text pos =
 
 let parse_program text =
   let pos = ref 0 in
+  (* let e = parse_structures text pos check_program_end in
+     List.iter (fun i -> print_endline (show_structure i)) e;
+     e *)
   parse_structures text pos check_program_end

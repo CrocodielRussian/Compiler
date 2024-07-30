@@ -12,6 +12,11 @@ all:
 	mkdir -p $(TARGET_DIR)
 	make run
 
+clear:
+	rm -rf $(TARGET_DIR)
+	mkdir -p $(TARGET_DIR)
+
+
 $(TARGET_DIR)main.o: $(SRC_DIR)main.s
 	$(ASMC) $(COMPILE_FLAGS) $(SRC_DIR)main.s -o $(TARGET_DIR)main.o
 
@@ -29,4 +34,4 @@ run: program
 	qemu-riscv64 -L /usr/riscv64-linux-gnu -cpu rv64 ./$(PROGRAM_NAME)
 
 debug: program
-	qemu-riscv64 -L /usr/riscv64-linux-gnu -cpu rv64 -g 1234 ./$(PROGRAM_NAME)
+	qemu-riscv64 -L /usr/riscv64-linux-gnu -cpu rv64 -g 9234 ./$(PROGRAM_NAME)

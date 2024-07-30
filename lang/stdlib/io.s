@@ -1,6 +1,7 @@
 .data
 .equ STDOUT, 1
 .equ STDIN, 0
+buffer:    .space 1  # Reserve 1 byte of space for the input
 
 .text
 .global print_int
@@ -68,3 +69,27 @@ putchar:
     ld s0, 8(sp)        # restore frame pointer
     addi sp, sp, 16     # free stack space
     ret
+
+.global read_char
+read_char:
+    li a0, 0          # File descriptor 0 is STDIN
+    la a1, buffer     # Load the address of the buffer into a1
+    li a2, 1          # Number of bytes to read
+
+    # Perform the read system call
+    li a7, 63         # System call number for read (63 in RISC-V)
+    ecall
+
+    # Check if the read was successful
+    bltz a0, error    # If a0 is negative, an error occurred
+
+    # Load the byte from the buffer into a register
+    lb a0, 0(a1)      # Load the byte from the buffer into t0
+    ret
+
+error:
+    # Handle the error (e.g., print an error message)
+    # Exit with an error code
+    li a0, 1          # Exit code 1
+    li a7, 93         # System call number for exit (93 in RISC-V)
+    ecall             # Make the system call
