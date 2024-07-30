@@ -9,7 +9,6 @@ module Main = struct
     let oc = open_out filename in
     output_string oc content;
     close_out oc
-
   let text =
     {|
   def read_int() {
@@ -33,9 +32,12 @@ module Main = struct
   }
 
   def main() {
-    print_int(read_int() + read_int());
+    var a := read_int();
+    var b := read_int();
+    print_int(a + b);
     return 0;
   }
+
   |}
 
   let compile out_filename =
@@ -45,11 +47,4 @@ module Main = struct
     append_to_file out_filename content
 
   let () = compile "lang/main.s"
-  (* let program = parse_program text in
-     (* List.iter (fun st -> show_structure st |> print_endline) program; *)
-     let instructions = program_to_asm_tree program in
-     (* List.iter
-        (fun instruction -> print_endline (show_instr instruction))
-        instructions; *)
-     print_endline (string_of_instr_list instructions) *)
 end
