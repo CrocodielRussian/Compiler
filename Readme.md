@@ -84,10 +84,10 @@ dune build
 
 ```clang
 def main() {
-    var a := read_int();
-    var b := read_int();
-    print_int(a + b);
-    return 0;
+	var a := read_int();
+	var b := read_int();
+	print_int(a + b);
+	return 0;
 }
 ```
 
@@ -103,6 +103,68 @@ make run
 dune test
 ```
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Code examples
+### Summary of two numbers
+```clang
+def main() {
+	var a := read_int();
+	var b := read_int();
+	print_int(a + b);
+	return 0;
+}
+```
+### Summary of 1 to n numbers
+```clang
+def nsum(n) {
+	if n <= 0 then 
+		return 0;
+	endif
+	return n + nsum(n - 1);
+}
+
+def main() {
+	var n := read_int();
+	print_int(nsum(n));
+	return 0;
+}
+```
+### Factorial of n
+```clang
+def factorial(n) {
+	var acc:=1;
+	while n>1 do
+		acc:=acc*n;
+		n:=n-1;
+	done
+	return acc;
+}
+
+def main() {
+	var n := read_int();
+	print_int(factorial(n));
+	return 0;
+}
+```
+### Fibonacci of n
+```clang
+def fibonachi(n) {
+	a:=0; b:=1;
+	while n>1 do
+		b:=a+b;
+		a:=b–a;
+		n:=n–1;
+	done
+	return b;
+  }
+
+def main() {
+	var n := read_int();
+	print_int(fibonachi(n));
+	return 0;
+}
+```
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Authors
