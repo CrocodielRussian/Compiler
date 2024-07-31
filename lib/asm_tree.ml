@@ -97,6 +97,18 @@ let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
   | OrOper -> [ Or (reg1, reg2, reg1) ]
   | _ -> throw_except(ASTError("unexpected binary operator"))
 
+let func_call_asm_tree (func_name : string) (args_instructions : instr list)
+    (buffer_size : int) : instr list =
+  args_instructions
+  @
+  if buffer_size > 0 then
+    [
+      Addi (StackPointer, StackPointer, ~-buffer_size);
+      Call func_name;
+      Addi (StackPointer, StackPointer, buffer_size);
+    ]
+  else [ Call func_name ]
+
 let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
     (variables_stack_position : int StringMap.t ref) : instr list =
   match ex with
@@ -162,16 +174,14 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
           expr_to_asm_tree (List.nth expressions 0) stack_pointer
             variables_stack_position
         in
-        let buffer_size = !stack_pointer - 16 in
-        expr_asm_tree
-        @
-        if buffer_size > 0 then
-          [
-            Addi (StackPointer, StackPointer, ~-buffer_size);
-            Call name;
-            Addi (StackPointer, StackPointer, buffer_size);
-          ]
-        else [ Call name ]
+        let _, max_pos = max_min_variable_position !variables_stack_position in
+        let buffer_size = !stack_pointer - max_pos in
+        (* print_endline
+           (Printf.sprintf
+              "func=%s args-count=%d max-pos=%d, arg-buf-size=%d sp=%d, \
+               buf-size=%d"
+              name (List.length expressions) max_pos 0 !stack_pointer buffer_size); *)
+        func_call_asm_tree name expr_asm_tree buffer_size
       else (
         List.iter
           (fun exp ->
@@ -191,22 +201,22 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
           incr regInd;
           stack_pointer := !stack_pointer - 8
         done;
-        let buffer_size = 8 * !length in
-        stack_pointer := !stack_pointer - buffer_size;
-        !all_instr
-        @
-        if buffer_size > 0 then
-          [
-            Addi (StackPointer, StackPointer, ~-buffer_size);
-            Call name;
-            Addi (StackPointer, StackPointer, buffer_size);
-          ]
-        else [ Call name ])
+        let _, max_pos = max_min_variable_position !variables_stack_position in
+        let args_buffer_size = 8 * !length in
+        let buffer_size = !stack_pointer - max_pos in
+        (* print_endline
+           (Printf.sprintf
+              "func=%s args-count=%d max-pos=%d, arg-buf-size=%d sp=%d, \
+               buf-size=%d"
+              name (List.length expressions) max_pos args_buffer_size
+              !stack_pointer buffer_size); *)
+        stack_pointer := !stack_pointer - args_buffer_size;
+        func_call_asm_tree name !all_instr buffer_size)
   | EmptyExpression -> []
 
 let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
-    (variables_stack_position : int StringMap.t ref) (label_count : int ref) (while_end_count : int ref):
-    instr list =
+    (variables_stack_position : int StringMap.t ref) (label_count : int ref)
+    (while_end_count : int ref) : instr list =
   match stmt with
   | Expression ex -> (
       match ex with
@@ -243,12 +253,14 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
           Addi (StackPointer, StackPointer, max_pos);
           Ret;
         ]
-  | BreakStatement -> let end_while_label = Printf.sprintf ".while_%d_end" (!while_end_count) in [Jump end_while_label]
+  | BreakStatement ->
+      let end_while_label = Printf.sprintf ".while_%d_end" !while_end_count in
+      [ Jump end_while_label ]
   | _ -> []
 
 and while_loop_to_asm (ex : expr) (stmts : statement list)
     (stack_pointer : int ref) (variables_stack_position : int StringMap.t ref)
-    (label_count : int ref) (while_end_count : int ref): instr list =
+    (label_count : int ref) (while_end_count : int ref) : instr list =
   incr while_end_count;
   let cur_while_index = !while_end_count in
   let result_label_index = !while_end_count in
@@ -258,22 +270,26 @@ and while_loop_to_asm (ex : expr) (stmts : statement list)
   in
   let while_loop_label_name = Printf.sprintf ".while_%d_loop" cur_while_index in
   let while_condition_expr_tree =
-    expr_to_asm_tree ex stack_pointer variables_stack_position 
+    expr_to_asm_tree ex stack_pointer variables_stack_position
   in
   let while_loop_stmts_asm_tree =
-    stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count while_end_count
+    stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count
+      while_end_count
   in
-  let next_open_label_name = Printf.sprintf ".while_%d_end" result_label_index in
+  let next_open_label_name =
+    Printf.sprintf ".while_%d_end" result_label_index
+  in
   [ Jump while_condition_label_name; Label while_loop_label_name ]
   @ while_loop_stmts_asm_tree
   @ [ Jump while_condition_label_name; Label while_condition_label_name ]
   @ while_condition_expr_tree
-  @ [ Bne (ArgumentReg 0, Zero, while_loop_label_name) ] @ [Jump next_open_label_name; Label next_open_label_name] 
+  @ [ Bne (ArgumentReg 0, Zero, while_loop_label_name) ]
+  @ [ Jump next_open_label_name; Label next_open_label_name ]
 
 and if_stmt_to_asm (ex : expr) (then_stmts : statement list)
     (else_stmts : statement list) (stack_pointer : int ref)
-    (variables_stack_position : int StringMap.t ref) (label_count : int ref) (while_end_count : int ref):
-    instr list =
+    (variables_stack_position : int StringMap.t ref) (label_count : int ref)
+    (while_end_count : int ref) : instr list =
   let current_if_index = !label_count + 1 in
   let result_label_index = !label_count + 2 in
   label_count := !label_count + 2;
@@ -298,8 +314,8 @@ and if_stmt_to_asm (ex : expr) (then_stmts : statement list)
   @ [ Jump next_open_label_name; Label next_open_label_name ]
 
 and stmts_to_asm_tree (stmts : statement list) (stack_pointer : int ref)
-    (variables_stack_position : int StringMap.t ref) (label_count : int ref) (while_end_count : int ref) :
-     instr list =
+    (variables_stack_position : int StringMap.t ref) (label_count : int ref)
+    (while_end_count : int ref) : instr list =
   let stmts_asm = ref [] in
   List.iter
     (fun stmt ->
@@ -314,11 +330,13 @@ and stmts_to_asm_tree (stmts : statement list) (stack_pointer : int ref)
 let func_stmts_to_asm_tree stmts stack_pointer variables_stack_position
     label_count (while_end_count : int ref) =
   let stmts_asm_tree =
-    stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count while_end_count
+    stmts_to_asm_tree stmts stack_pointer variables_stack_position label_count
+      while_end_count
   in
   stmts_asm_tree
 
-let func_to_asm_tree name args_name stmts label_count (while_end_count : int ref)=
+let func_to_asm_tree name args_name stmts label_count
+    (while_end_count : int ref) =
   let stack_pointer = ref 16 in
   let variables_stack_position : int StringMap.t ref = ref StringMap.empty in
   let index = ref 0 in
@@ -369,8 +387,6 @@ let append_start_label (instructions : instr list ref) : instr list =
       ];
   !instructions
 
-(* addi sp, sp, %d\nli a0, 0\nmv a5, a0\nli a7, 93\necall *)
-
 let program_to_asm_tree (structures : structure list) : instr list =
   let all = ref [] in
   let label_count = ref 0 in
@@ -379,7 +395,9 @@ let program_to_asm_tree (structures : structure list) : instr list =
     (fun struct_item ->
       match struct_item with
       | FuncStruct (name, args_name, stmts) ->
-          let insts = func_to_asm_tree name args_name stmts label_count while_end_count in
+          let insts =
+            func_to_asm_tree name args_name stmts label_count while_end_count
+          in
           all := !all @ insts)
     structures;
   append_start_label all

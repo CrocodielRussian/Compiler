@@ -1,9 +1,30 @@
+def get_int() {
+    return read_int();
+}
+
+def sum(x, y) {
+    return x + y;
+}
+
+def bigsum(a,b,c,d,e,f,g,i,k,r) {
+    return a+b+c+d+e+f+g+i+k+r;
+}
+
+def print_number(a) {
+    print_int(a);
+    return a;
+}
+
 def main() {
+<<<<<<< HEAD
     var a := 0;
     var b := 10;
     while(a > 10) do
         print_int(a);
         a += 1;
     done
+=======
+    print_int(read_int());
+>>>>>>> 281d3f2d3fa425ea37ef3f70e20dbe066f5b9ed2
     return 0;
 }

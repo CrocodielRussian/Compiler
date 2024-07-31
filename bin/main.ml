@@ -4,28 +4,29 @@ open Compiler.Asm_tree
 open Compiler.Riscv_translator
 
 module Main = struct
-  (* module Unix = UnixLabels *)
   let input_file = Sys.argv.(1)
   let output_file = Sys.argv.(2)
 
-  let read_program_file filename  = 
+  let read_program_file filename =
     let lines = ref [] in
     let chan = open_in filename in
     try
-      while true; do
+      while true do
         lines := input_line chan :: !lines
-      done; !lines
+      done;
+      !lines
     with End_of_file ->
       close_in chan;
-      List.rev !lines ;;
+      List.rev !lines
 
   let append_to_file filename content =
     let oc = open_out filename in
     output_string oc content;
     close_out oc
-  let text = read_program_file input_file |> (String.concat "\n" )
-  let try_read in_filename = 
-    read_program_file in_filename
+
+  let text = read_program_file input_file |> String.concat "\n"
+  let try_read in_filename = read_program_file in_filename
+
   let compile out_filename =
     let content =
       parse_program text |> optimize_ast |> program_to_asm_tree
@@ -44,11 +45,10 @@ module Main = struct
     List.iter(fun str -> (all := !all ^ (show_instr str))) (parse_program text |> optimize_ast |> program_to_asm_tree);
     append_to_file out_filename !all
 
-
-  let () = List.nth (parse_program text |> optimize_ast) 0 |> string_of_structure |> print_endline
-  (* match Sys.argv.(3) with 
+  let () =
+  match Sys.argv.(3) with 
   | "--compile" -> compile output_file
   | "--ast_lang" -> test_ast_lang output_file
   | "--ast_asm" -> test_ast_asm output_file
-  | _ -> failwith "Don't exist" *)
+  | _ -> failwith "Don't exist"
   end
