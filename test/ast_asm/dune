@@ -11,7 +11,7 @@
   (promote (until-clean)))
  (action
   (progn
-   (run %{main} %{clang} /dev/null --ast_lang 1> %{targets})
+   (run %{main} %{clang} %{targets} --ast_lang)
   )
  )
 )

@@ -32,31 +32,23 @@ module Main = struct
       |> string_of_instr_list
     in
     append_to_file out_filename content
-  
+    
+
   let test_ast_lang out_filename =
-    let content =
-      parse_program text |> optimize_ast |> program_to_asm_tree
-      |> string_of_instr_list
-    in
-    append_to_file out_filename content
+    let all = ref "" in
+    List.iter(fun str -> (all := !all ^ (show_structure str))) (parse_program text |> optimize_ast);
+    append_to_file out_filename !all
   
   let test_ast_asm out_filename =
-    let content =
-      parse_program text |> optimize_ast |> program_to_asm_tree
-      |> string_of_instr_list
-    in
-    append_to_file out_filename content
+    let all = ref "" in
+    List.iter(fun str -> (all := !all ^ (show_instr str))) (parse_program text |> optimize_ast |> program_to_asm_tree);
+    append_to_file out_filename !all
 
 
-  let () = 
-  match Sys.argv.(3) with 
+  let () = List.nth (parse_program text |> optimize_ast) 0 |> string_of_structure |> print_endline
+  (* match Sys.argv.(3) with 
   | "--compile" -> compile output_file
-  | "--ast_lang" -> (
-    let program = parse_program text in
-    List.iter (fun st -> show_structure st |> print_endline) program;)
-  | "--ast_asm" -> (
-    let program = parse_program text in
-    let instructions = program_to_asm_tree program in
-    List.iter(fun instruction -> print_endline (show_instr instruction)) instructions;)
-  | _ -> failwith "Don't exist"
+  | "--ast_lang" -> test_ast_lang output_file
+  | "--ast_asm" -> test_ast_asm output_file
+  | _ -> failwith "Don't exist" *)
   end
