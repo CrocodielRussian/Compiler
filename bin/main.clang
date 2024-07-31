@@ -1,5 +1,0 @@
-def main() {
-    var a := 10;
-    print_int(a %3);
-    return put_char(49) + put_char(10);
-}
