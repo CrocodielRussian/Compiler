@@ -20,8 +20,6 @@ module Main = struct
       close_in chan;
       List.rev !lines ;;
 
-  
-    
   let append_to_file filename content =
     let oc = open_out filename in
     output_string oc content;
@@ -36,15 +34,15 @@ module Main = struct
     append_to_file out_filename content
 
 
-  let () =  compile output_file
-  
-  (* List.iter(fun str -> print_endline str) (try_read "bin/main.clang" ) *)
-
-  (* let program = parse_program text in
-     List.iter (fun st -> show_structure st |> print_endline) program; *)
-     (* let instructions = program_to_asm_tree program in
-     List.iter
-        (fun instruction -> print_endline (show_instr instruction))
-        instructions;
-     print_endline (string_of_instr_list instructions) *)
+  let () = 
+  match Sys.argv.(3) with 
+  | "--compile" -> compile output_file
+  | "--ast_lang" -> (
+    let program = parse_program text in
+    List.iter (fun st -> show_structure st |> print_endline) program;)
+  | "--ast_asm" -> (
+    let program = parse_program text in
+    let instructions = program_to_asm_tree program in
+    List.iter(fun instruction -> print_endline (show_instr instruction)) instructions;)
+  | _ -> failwith "Don't exist"
   end

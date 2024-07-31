@@ -1,0 +1,11 @@
+def main(){
+    var n := 1;
+    var acc := 1;
+    while(n < 6) do
+        n += 1;
+        acc := acc * n;
+    done 
+    print_int(acc);
+
+    return 0;
+}
