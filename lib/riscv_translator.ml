@@ -37,6 +37,9 @@ let string_of_instr (instruction : instr) =
   | Div (r1, r2, r3) ->
       Printf.sprintf "div\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2)
         (string_of_reg r3)
+  | Rem (r1, r2, r3) ->
+      Printf.sprintf "rem\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2)
+        (string_of_reg r3)
   | Sgt (r1, r2, r3) ->
       Printf.sprintf "sgt\t%s, %s, %s" (string_of_reg r1) (string_of_reg r2)
         (string_of_reg r3)

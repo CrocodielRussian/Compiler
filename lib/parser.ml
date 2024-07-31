@@ -6,6 +6,7 @@ type oper =
   | Plus
   | Multiply
   | Divide
+  | Mod
   | Minus
   | Low
   | More
@@ -73,8 +74,8 @@ let string_of_binary_operator = function
   | Unequal -> "!="
   | AndOper -> "&&"
   | OrOper -> "||"
-  | _ -> throw_except(ASTError("unexpected binary operator"))
-
+  | Mod -> "%"
+  | _ -> throw_except (ASTError "unexpected binary operator")
 [@@deriving show]
 
 let string_of_assign_operator = function
@@ -110,9 +111,10 @@ let rec string_of_expression = function
   | EmptyExpression -> ""
 
 let rec string_of_statements stmts count_of_t =
-
-  let str_lst = List.map (fun stmt -> string_of_statement stmt count_of_t) stmts in
-  "\t" ^ String.concat ("\n" ^ (String.make !count_of_t '\t') ) str_lst 
+  let str_lst =
+    List.map (fun stmt -> string_of_statement stmt count_of_t) stmts
+  in
+  "\t" ^ String.concat ("\n" ^ String.make !count_of_t '\t') str_lst
 
 and string_of_statement stmt count_of_t =
   match stmt with
@@ -120,11 +122,12 @@ and string_of_statement stmt count_of_t =
   | BreakStatement -> "break;"
   | ReturnStatement e -> Printf.sprintf "return %s;" (string_of_expression e)
   | Expression e -> Printf.sprintf "%s;" (string_of_expression e)
-  | AssignStatement (v, e2) -> Printf.sprintf "var %s := %s;"
-      v (string_of_expression e2)
+  | AssignStatement (v, e2) ->
+      Printf.sprintf "var %s := %s;" v (string_of_expression e2)
   | While (e1, stmts) ->
-    incr count_of_t;  
-    "while " ^ string_of_expression e1 ^ " do\n" ^ (string_of_statements stmts count_of_t)
+      incr count_of_t;
+      "while " ^ string_of_expression e1 ^ " do\n"
+      ^ string_of_statements stmts count_of_t
       ^ "\n\tdone"
   | If (e1, if_stmts, else_stmts) ->
       incr count_of_t;
@@ -134,21 +137,31 @@ and string_of_statement stmt count_of_t =
         ^ "\nendif"
       else
         "if " ^ string_of_expression e1 ^ " then\n"
-        ^ (string_of_statements if_stmts count_of_t)
+        ^ string_of_statements if_stmts count_of_t
         ^ "\nelse\n"
-        ^ (string_of_statements else_stmts count_of_t)
+        ^ string_of_statements else_stmts count_of_t
         ^ "\nendif"
+
 and string_of_structure = function
-  | FuncStruct(name, arg_var, stmts) ->  let count_of_t = ref 1 in Printf.sprintf("def %s (%s){\n%s\n}") name (String.concat " " arg_var) (string_of_statements stmts count_of_t)
+  | FuncStruct (name, arg_var, stmts) ->
+      let count_of_t = ref 1 in
+      Printf.sprintf "def %s (%s){\n%s\n}" name
+        (String.concat " " arg_var)
+        (string_of_statements stmts count_of_t)
 
 let initialised_functions =
-  ref (StringSet.of_list [ "_start"; "print_int"; "read_char"; "read_int" ])
+  ref
+    (StringSet.of_list
+       [ "_start"; "put_char"; "get_char"; "read_int"; "print_int" ])
 
 let functions_args_count : int StringMap.t ref =
   ref
     StringMap.(
-      empty |> add "print_int" 1 |> add "read_char" 0 |> add "read_int" 0)
+      empty |> add "put_char" 1 |> add "get_char" 0 |> add "read_int" 0
+      |> add "print_int" 1)
 
+let count_of_newline = ref 0
+let cur_pos_on_line = ref 0
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
 let is_whitespace = function ' ' | '\r' | '\t' | '\n' -> true | _ -> false
@@ -156,9 +169,6 @@ let is_newline = function '\n' -> true | _ -> false
 
 let expect_symbol text pos symbol =
   if pos >= 0 && pos < String.length text then text.[pos] == symbol else false
-
-let count_of_newline = ref 0
-let cur_pos_on_line = ref 0
 
 let skip_whitespaces text pos =
   let length = String.length text in
@@ -342,6 +352,9 @@ let parse_multiply_operation text pos =
               incr cur_pos_on_line;
               Divide
           | _ -> Invalid)
+    | '%' ->
+        incr pos;
+        Mod
     | _ -> Invalid
 
 let parse_bool_operation text pos =
@@ -739,9 +752,9 @@ and parse_statements text pos check initialised_variables =
               (ParserError
                  ( !count_of_newline,
                    !cur_pos_on_line,
-                   "unexpected expression " ^ (string_of_statement result (ref 0)))))
-    | "break" -> 
-         all := !all @ [ BreakStatement]
+                   "unexpected expression " ^ string_of_statement result (ref 0)
+                 )))
+    | "break" -> all := !all @ [ BreakStatement ]
     | _ ->
         pos := !pos - String.length ident;
         let result = parse_expr_statement text pos initialised_variables in
