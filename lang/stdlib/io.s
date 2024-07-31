@@ -51,6 +51,71 @@ print_int.print:
     addi         sp, sp, 40       # free stack space
     ret   
 
+.global read_int
+read_int:
+	addi	sp, sp, -40
+	sd	ra, 32(sp)
+	sd	fp, 24(sp)
+	addi	fp, sp, 40
+	li	a0, 0
+	sd	a0, -24(fp)
+	li	a0, 0
+	sd	a0, -32(fp)
+	call	read_char
+	mv	a1, a0
+	li	a0, '-'
+	sub	a2, a1, a0
+	seqz	a2, a2
+	li	a0, '+'
+	sub	a0, a1, a0
+	seqz	a0, a0
+	or	a0, a0, a2
+	beq	a0, zero, .read_int.not_sign
+	sd	a2, -32(fp)
+	call	read_char
+	li	a2, 48
+	sub	a1, a0, a2
+	j	.read_int.next_step
+.read_int.not_sign:
+	li	a0, 48
+	sub	a1, a1, a0
+	j	.read_int.next_step 
+.read_int.next_step:
+	j	.read_int.check_symbol
+.read_int.read_next:
+	ld	a0, -24(fp)
+	li	a2, 10
+	mul	a0, a2, a0
+	add	a0, a1, a0
+	sd	a0, -24(fp)
+	call	read_char
+	addi a0, a0, -48
+	mv a1, a0
+	j	.read_int.check_symbol
+.read_int.check_symbol:
+	li	a0, 0
+	sgt	a0, a0, a1
+	xori	a0, a0, 1
+	li	a2, 9
+	sgt	a2, a1, a2
+	xori	a2, a2, 1
+	and	a0, a0, a2
+	bne	a0, zero, .read_int.read_next 
+	ld	a0, -32(fp)
+	beq	a0, zero, .not_negative
+	li	a0, -1
+	ld	a2, -24(fp)
+	mul	a0, a2, a0
+	sd	a0, -24(fp)
+	j	.read_int.close_step
+.not_negative:
+	j	.read_int.close_step
+.read_int.close_step:
+	ld	a0, -24(fp)
+	ld	ra, 32(sp)
+	ld	fp, 24(sp)
+	addi	sp, sp, 40
+	ret 
 
 # args[a0 - output stream, a1 - char to put]
 .global putchar

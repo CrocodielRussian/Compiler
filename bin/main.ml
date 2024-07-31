@@ -1,6 +1,5 @@
 open Compiler.Parser
-
-(* open Compiler.Optimizator *)
+open Compiler.Optimizator
 open Compiler.Asm_tree
 open Compiler.Riscv_translator
 
@@ -29,7 +28,22 @@ module Main = struct
     read_program_file in_filename
   let compile out_filename =
     let content =
-      parse_program text |> program_to_asm_tree |> string_of_instr_list
+      parse_program text |> optimize_ast |> program_to_asm_tree
+      |> string_of_instr_list
+    in
+    append_to_file out_filename content
+  
+  let test_ast_lang out_filename =
+    let content =
+      parse_program text |> optimize_ast |> program_to_asm_tree
+      |> string_of_instr_list
+    in
+    append_to_file out_filename content
+  
+  let test_ast_asm out_filename =
+    let content =
+      parse_program text |> optimize_ast |> program_to_asm_tree
+      |> string_of_instr_list
     in
     append_to_file out_filename content
 
