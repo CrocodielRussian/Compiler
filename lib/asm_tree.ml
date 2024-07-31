@@ -97,6 +97,18 @@ let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
   | OrOper -> [ Or (reg1, reg2, reg1) ]
   | _ -> throw_except (ASTError "unexpected binary operator")
 
+let func_call_asm_tree (func_name : string) (args_instructions : instr list)
+    (buffer_size : int) : instr list =
+  args_instructions
+  @
+  if buffer_size > 0 then
+    [
+      Addi (StackPointer, StackPointer, ~-buffer_size);
+      Call func_name;
+      Addi (StackPointer, StackPointer, buffer_size);
+    ]
+  else [ Call func_name ]
+
 let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
     (variables_stack_position : int StringMap.t ref) : instr list =
   match ex with
@@ -162,16 +174,14 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
           expr_to_asm_tree (List.nth expressions 0) stack_pointer
             variables_stack_position
         in
-        let buffer_size = !stack_pointer - 16 in
-        expr_asm_tree
-        @
-        if buffer_size > 0 then
-          [
-            Addi (StackPointer, StackPointer, ~-buffer_size);
-            Call name;
-            Addi (StackPointer, StackPointer, buffer_size);
-          ]
-        else [ Call name ]
+        let _, max_pos = max_min_variable_position !variables_stack_position in
+        let buffer_size = !stack_pointer - max_pos in
+        (* print_endline
+           (Printf.sprintf
+              "func=%s args-count=%d max-pos=%d, arg-buf-size=%d sp=%d, \
+               buf-size=%d"
+              name (List.length expressions) max_pos 0 !stack_pointer buffer_size); *)
+        func_call_asm_tree name expr_asm_tree buffer_size
       else (
         List.iter
           (fun exp ->
@@ -191,17 +201,17 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
           incr regInd;
           stack_pointer := !stack_pointer - 8
         done;
-        let buffer_size = 8 * !length in
-        stack_pointer := !stack_pointer - buffer_size;
-        !all_instr
-        @
-        if buffer_size > 0 then
-          [
-            Addi (StackPointer, StackPointer, ~-buffer_size);
-            Call name;
-            Addi (StackPointer, StackPointer, buffer_size);
-          ]
-        else [ Call name ])
+        let _, max_pos = max_min_variable_position !variables_stack_position in
+        let args_buffer_size = 8 * !length in
+        let buffer_size = !stack_pointer - max_pos in
+        (* print_endline
+           (Printf.sprintf
+              "func=%s args-count=%d max-pos=%d, arg-buf-size=%d sp=%d, \
+               buf-size=%d"
+              name (List.length expressions) max_pos args_buffer_size
+              !stack_pointer buffer_size); *)
+        stack_pointer := !stack_pointer - args_buffer_size;
+        func_call_asm_tree name !all_instr buffer_size)
   | EmptyExpression -> []
 
 let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
@@ -376,8 +386,6 @@ let append_start_label (instructions : instr list ref) : instr list =
         EnvCall;
       ];
   !instructions
-
-(* addi sp, sp, %d\nli a0, 0\nmv a5, a0\nli a7, 93\necall *)
 
 let program_to_asm_tree (structures : structure list) : instr list =
   let all = ref [] in

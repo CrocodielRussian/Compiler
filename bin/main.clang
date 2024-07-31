@@ -1,4 +1,21 @@
+def get_int() {
+    return read_int();
+}
+
+def sum(x, y) {
+    return x + y;
+}
+
+def bigsum(a,b,c,d,e,f,g,i,k,r) {
+    return a+b+c+d+e+f+g+i+k+r;
+}
+
+def print_number(a) {
+    print_int(a);
+    return a;
+}
+
 def main() {
-    var a := 10202;
+    print_int(read_int());
     return 0;
 }
