@@ -73,8 +73,7 @@ let string_of_binary_operator = function
   | Unequal -> "!="
   | AndOper -> "&&"
   | OrOper -> "||"
-  | _ -> throw_except(ASTError("unexpected binary operator"))
-
+  | _ -> throw_except (ASTError "unexpected binary operator")
 [@@deriving show]
 
 let string_of_assign_operator = function
@@ -136,13 +135,18 @@ and string_of_statement = function
         ^ "\nendif"
 
 let initialised_functions =
-  ref (StringSet.of_list [ "_start"; "print_int"; "read_char"; "read_int" ])
+  ref
+    (StringSet.of_list
+       [ "_start"; "print_int"; "read_char"; "read_int"; "print_char" ])
 
 let functions_args_count : int StringMap.t ref =
   ref
     StringMap.(
-      empty |> add "print_int" 1 |> add "read_char" 0 |> add "read_int" 0)
+      empty |> add "print_int" 1 |> add "read_char" 0 |> add "read_int" 0
+      |> add "print_char" 1)
 
+let count_of_newline = ref 0
+let cur_pos_on_line = ref 0
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
 let is_whitespace = function ' ' | '\r' | '\t' | '\n' -> true | _ -> false
@@ -150,9 +154,6 @@ let is_newline = function '\n' -> true | _ -> false
 
 let expect_symbol text pos symbol =
   if pos >= 0 && pos < String.length text then text.[pos] == symbol else false
-
-let count_of_newline = ref 0
-let cur_pos_on_line = ref 0
 
 let skip_whitespaces text pos =
   let length = String.length text in
@@ -734,8 +735,7 @@ and parse_statements text pos check initialised_variables =
                  ( !count_of_newline,
                    !cur_pos_on_line,
                    "unexpected expression " ^ string_of_statement result )))
-    | "break" -> 
-         all := !all @ [ BreakStatement]
+    | "break" -> all := !all @ [ BreakStatement ]
     | _ ->
         pos := !pos - String.length ident;
         let result = parse_expr_statement text pos initialised_variables in

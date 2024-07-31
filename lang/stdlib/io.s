@@ -117,24 +117,6 @@ read_int:
 	addi	sp, sp, 40
 	ret 
 
-# args[a0 - output stream, a1 - char to put]
-.global putchar
-putchar:
-    addi sp, sp, -16    # create stack space
-    sd s0, 8(sp)        # store frame pointer
-    addi s0, sp, 16     # new frame pointer
-
-    sd a1, 0(s0)        # save char on stack
-
-    mv a1, s0           # load char stack address
-    li a2, 1            # choose also 1 byte to write
-    li a7, 64           # code of RISC-V (64-bits) syscall 'write'
-    ecall
-
-    ld s0, 8(sp)        # restore frame pointer
-    addi sp, sp, 16     # free stack space
-    ret
-
 .global read_char
 read_char:
     li a0, 0          # File descriptor 0 is STDIN
@@ -159,3 +141,29 @@ error:
     li a0, 1          # Exit code 1
     li a7, 93         # System call number for exit (93 in RISC-V)
     ecall             # Make the system call
+
+
+# args[a0 - char to put]
+.global print_char
+print_char:
+	addi	sp, sp, -24
+	sd		ra, 16(sp)
+	sd		fp, 8(sp)
+	addi	fp, sp, 24
+	
+    sd a0, -24(fp)        # save char on stack
+
+    li a0, STDOUT
+    mv a1, sp           # load char stack address
+    li a2, 1            # choose also 1 byte to write
+    li a7, 64
+    ecall
+
+    # a0 contains length of writen bytes
+    addi a0, a0, -1
+    snez a0, a0 
+
+	ld		ra, 16(sp)
+	ld		fp, 8(sp)
+	addi	sp, sp, 24
+	ret

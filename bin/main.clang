@@ -1,21 +1,3 @@
-def get_int() {
-    return read_int();
-}
-
-def sum(x, y) {
-    return x + y;
-}
-
-def bigsum(a,b,c,d,e,f,g,i,k,r) {
-    return a+b+c+d+e+f+g+i+k+r;
-}
-
-def print_number(a) {
-    print_int(a);
-    return a;
-}
-
 def main() {
-    print_int(read_int());
-    return 0;
+    return print_char(49) + print_char(10);
 }
