@@ -95,7 +95,7 @@ let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
       [ Sub (reg1, reg2, reg1); Seqz (reg1, reg1); Xori (reg1, reg1, 1) ]
   | AndOper -> [ And (reg1, reg2, reg1) ]
   | OrOper -> [ Or (reg1, reg2, reg1) ]
-  | _ -> throw_except (ASTError "unexpected binary operator")
+  | _ -> throw_except(ASTError("unexpected binary operator"))
 
 let func_call_asm_tree (func_name : string) (args_instructions : instr list)
     (buffer_size : int) : instr list =

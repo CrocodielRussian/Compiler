@@ -4,7 +4,6 @@ open Compiler.Asm_tree
 open Compiler.Riscv_translator
 
 module Main = struct
-  (* module Unix = UnixLabels *)
   let input_file = Sys.argv.(1)
   let output_file = Sys.argv.(2)
 
@@ -34,6 +33,22 @@ module Main = struct
       |> string_of_instr_list
     in
     append_to_file out_filename content
+    
 
-  let () = compile output_file
-end
+  let test_ast_lang out_filename =
+    let all = ref "" in
+    List.iter(fun str -> (all := !all ^ (show_structure str))) (parse_program text |> optimize_ast);
+    append_to_file out_filename !all
+  
+  let test_ast_asm out_filename =
+    let all = ref "" in
+    List.iter(fun str -> (all := !all ^ (show_instr str))) (parse_program text |> optimize_ast |> program_to_asm_tree);
+    append_to_file out_filename !all
+
+  let () =
+  match Sys.argv.(3) with 
+  | "--compile" -> compile output_file
+  | "--ast_lang" -> test_ast_lang output_file
+  | "--ast_asm" -> test_ast_asm output_file
+  | _ -> failwith "Don't exist"
+  end

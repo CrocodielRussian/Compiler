@@ -1,0 +1,17 @@
+(cram
+ (deps simple_variable.txt))
+
+(rule
+ (targets simple_variable.txt)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang simple_variable.clang)
+ )
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} %{targets} --ast_lang)
+  )
+ )
+)

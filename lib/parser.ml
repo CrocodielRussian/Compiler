@@ -108,31 +108,44 @@ let rec string_of_expression = function
       Printf.sprintf "%s(%s)" n (String.concat ", " !expressions_string)
   | EmptyExpression -> ""
 
-let rec string_of_statements stmts =
-  let str_lst = List.map (fun stmt -> string_of_statement stmt) stmts in
-  String.concat "\n" str_lst
+let rec string_of_statements stmts count_of_t =
+  let str_lst =
+    List.map (fun stmt -> string_of_statement stmt count_of_t) stmts
+  in
+  "\t" ^ String.concat ("\n" ^ String.make !count_of_t '\t') str_lst
 
-and string_of_statement = function
+and string_of_statement stmt count_of_t =
+  match stmt with
   | EmptyStatement -> ""
   | BreakStatement -> "break;"
-  | ReturnStatement e -> "return " ^ string_of_expression e ^ ";"
-  | Expression e -> string_of_expression e ^ ";"
+  | ReturnStatement e -> Printf.sprintf "return %s;" (string_of_expression e)
+  | Expression e -> Printf.sprintf "%s;" (string_of_expression e)
   | AssignStatement (v, e2) ->
-      "var " ^ v ^ " := " ^ string_of_expression e2 ^ ";"
+      Printf.sprintf "var %s := %s;" v (string_of_expression e2)
   | While (e1, stmts) ->
-      "while " ^ string_of_expression e1 ^ " do\n" ^ string_of_statements stmts
-      ^ "\ndone"
+      incr count_of_t;
+      "while " ^ string_of_expression e1 ^ " do\n"
+      ^ string_of_statements stmts count_of_t
+      ^ "\n\tdone"
   | If (e1, if_stmts, else_stmts) ->
+      incr count_of_t;
       if else_stmts = [ EmptyStatement ] then
         "if " ^ string_of_expression e1 ^ " then\n"
-        ^ string_of_statements if_stmts
+        ^ string_of_statements if_stmts count_of_t
         ^ "\nendif"
       else
         "if " ^ string_of_expression e1 ^ " then\n"
-        ^ string_of_statements if_stmts
+        ^ string_of_statements if_stmts count_of_t
         ^ "\nelse\n"
-        ^ string_of_statements else_stmts
+        ^ string_of_statements else_stmts count_of_t
         ^ "\nendif"
+
+and string_of_structure = function
+  | FuncStruct (name, arg_var, stmts) ->
+      let count_of_t = ref 1 in
+      Printf.sprintf "def %s (%s){\n%s\n}" name
+        (String.concat " " arg_var)
+        (string_of_statements stmts count_of_t)
 
 let initialised_functions =
   ref
@@ -734,7 +747,8 @@ and parse_statements text pos check initialised_variables =
               (ParserError
                  ( !count_of_newline,
                    !cur_pos_on_line,
-                   "unexpected expression " ^ string_of_statement result )))
+                   "unexpected expression " ^ string_of_statement result (ref 0)
+                 )))
     | "break" -> all := !all @ [ BreakStatement ]
     | _ ->
         pos := !pos - String.length ident;
@@ -866,7 +880,4 @@ let check_program_end text pos =
 
 let parse_program text =
   let pos = ref 0 in
-  (* let e = parse_structures text pos check_program_end in
-     List.iter (fun i -> print_endline (show_structure i)) e;
-     e *)
   parse_structures text pos check_program_end

@@ -1,0 +1,12 @@
+def main(){
+    var a := 0;
+    while(a <= 10) do 
+      if(a >= 3) then
+        break  
+      endif
+      print_int(a);
+      a += 1;
+    done
+    return 0;
+}
+    

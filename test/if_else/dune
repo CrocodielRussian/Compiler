@@ -1,7 +1,3 @@
-(env
- (_ 
-  (flags
-   (:standard -w -34))))
 (cram
  (deps io.o if_else.exe if_without_else.exe))
 
@@ -25,7 +21,7 @@
   (promote (until-clean)))
  (action
   (progn
-   (run %{main} %{clang} if_else.s)
+   (run %{main} %{clang} if_else.s --compile)
    (run riscv64-linux-gnu-as -march=rv64gc if_else.s -o if_else.o)
    (run riscv64-linux-gnu-ld if_else.o %{lib} -o %{targets})
   )
@@ -42,7 +38,7 @@
   (promote (until-clean)))
  (action
   (progn
-   (run %{main} %{clang} if_without_else.s)
+   (run %{main} %{clang} if_without_else.s --compile)
    (run riscv64-linux-gnu-as -march=rv64gc if_without_else.s -o if_without_else.o)
    (run riscv64-linux-gnu-ld if_without_else.o %{lib} -o %{targets})
   )

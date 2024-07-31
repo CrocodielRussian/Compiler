@@ -1,0 +1,79 @@
+(cram
+ (deps
+  io.o
+  simple_while.exe
+  while_with_break.exe
+  fibonacci.exe
+  factorial.exe))
+
+(rule
+ (targets io.o)
+ (action
+  (progn
+   (run
+    riscv64-linux-gnu-as
+    -march=rv64gc
+    %{project_root}/lang/stdlib/io.s
+    -o
+    %{targets}))))
+
+(rule
+ (targets simple_while.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang simple_while.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} simple_while.s --compile)
+   (run riscv64-linux-gnu-as -march=rv64gc simple_while.s -o simple_while.o)
+   (run riscv64-linux-gnu-ld simple_while.o %{lib} -o %{targets}))))
+
+(rule
+ (targets while_with_break.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang while_with_break.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} while_with_break.s --compile)
+   (run
+    riscv64-linux-gnu-as
+    -march=rv64gc
+    while_with_break.s
+    -o
+    while_with_break.o)
+   (run riscv64-linux-gnu-ld while_with_break.o %{lib} -o %{targets}))))
+
+(rule
+ (targets fibonacci.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang fibonacci.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} fibonacci.s --compile)
+   (run riscv64-linux-gnu-as -march=rv64gc fibonacci.s -o fibonacci.o)
+   (run riscv64-linux-gnu-ld fibonacci.o %{lib} -o %{targets}))))
+
+(rule
+ (targets factorial.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang factorial.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} factorial.s --compile)
+   (run riscv64-linux-gnu-as -march=rv64gc factorial.s -o factorial.o)
+   (run riscv64-linux-gnu-ld factorial.o %{lib} -o %{targets}))))
