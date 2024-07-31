@@ -152,13 +152,13 @@ and string_of_structure = function
 let initialised_functions =
   ref
     (StringSet.of_list
-       [ "_start"; "print_int"; "read_char"; "read_int"; "print_char" ])
+       [ "_start"; "put_char"; "get_char"; "read_int"; "print_int" ])
 
 let functions_args_count : int StringMap.t ref =
   ref
     StringMap.(
-      empty |> add "print_int" 1 |> add "read_char" 0 |> add "read_int" 0
-      |> add "print_char" 1)
+      empty |> add "put_char" 1 |> add "get_char" 0 |> add "read_int" 0
+      |> add "print_int" 1)
 
 let count_of_newline = ref 0
 let cur_pos_on_line = ref 0
@@ -885,6 +885,4 @@ let check_program_end text pos =
 
 let parse_program text =
   let pos = ref 0 in
-  let e = parse_structures text pos check_program_end in
-  List.iter (fun s -> print_endline (string_of_structure s)) e;
-  e
+  parse_structures text pos check_program_end

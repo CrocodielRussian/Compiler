@@ -61,7 +61,7 @@ read_int:
 	sd	a0, -24(fp)
 	li	a0, 0
 	sd	a0, -32(fp)
-	call	read_char
+	call	get_char
 	mv	a1, a0
 	li	a0, '-'
 	sub	a2, a1, a0
@@ -72,7 +72,7 @@ read_int:
 	or	a0, a0, a2
 	beq	a0, zero, .read_int.not_sign
 	sd	a2, -32(fp)
-	call	read_char
+	call	get_char
 	li	a2, 48
 	sub	a1, a0, a2
 	j	.read_int.next_step
@@ -88,7 +88,7 @@ read_int:
 	mul	a0, a2, a0
 	add	a0, a1, a0
 	sd	a0, -24(fp)
-	call	read_char
+	call	get_char
 	addi a0, a0, -48
 	mv a1, a0
 	j	.read_int.check_symbol
@@ -117,8 +117,8 @@ read_int:
 	addi	sp, sp, 40
 	ret 
 
-.global read_char
-read_char:
+.global get_char
+get_char:
     li a0, 0          # File descriptor 0 is STDIN
     la a1, buffer     # Load the address of the buffer into a1
     li a2, 1          # Number of bytes to read
@@ -144,8 +144,8 @@ error:
 
 
 # args[a0 - char to put]
-.global print_char
-print_char:
+.global put_char
+put_char:
 	addi	sp, sp, -24
 	sd		ra, 16(sp)
 	sd		fp, 8(sp)
