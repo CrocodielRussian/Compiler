@@ -3,10 +3,10 @@ name: Build Master in docker
 on:
   pull_request:
     branches:
-      - 'master'
+      - 'main'
   push:
     branches:
-      - 'master'
+      - 'main'
 
 env:
   OPAMROOT: /home/opam/.opam
