@@ -242,7 +242,7 @@ let rec func_call_optimize_stmt (stmt : statement)
       in
       !result_statements @ [ ReturnStatement optisubex ]
   | EmptyStatement -> []
-  | BreakStatement -> [stmt]
+  | BreakStatement -> [ stmt ]
 
 and func_call_optimize_stmts (stmts : statement list)
     (func_call_var_indexes : int StringMap.t ref) : statement list =
@@ -257,13 +257,8 @@ and func_call_optimize_stmts (stmts : statement list)
 let optimize_structure (st : structure) : structure =
   match st with
   | FuncStruct (name, var_args, stmts) ->
-      let func_call_var_indexes = ref StringMap.empty in
-      FuncStruct
-        ( name,
-          var_args,
-          func_call_optimize_stmts
-            (const_optimize_stmts stmts)
-            func_call_var_indexes )
+      (* let func_call_var_indexes = ref StringMap.empty in *)
+      FuncStruct (name, var_args, const_optimize_stmts stmts)
 
 let optimize_structures (structures : structure list) : structure list =
   let new_structures = ref [] in
@@ -274,5 +269,5 @@ let optimize_structures (structures : structure list) : structure list =
 
 let optimize_ast (ast : structure list) : structure list =
   let new_ast = optimize_structures ast in
-  List.iter (fun e -> print_endline (show_structure e)) new_ast;
+  (* List.iter (fun e -> print_endline (show_structure e)) new_ast; *)
   new_ast
