@@ -6,6 +6,7 @@ type oper =
   | Plus
   | Multiply
   | Divide
+  | Mod
   | Minus
   | Low
   | More
@@ -73,6 +74,7 @@ let string_of_binary_operator = function
   | Unequal -> "!="
   | AndOper -> "&&"
   | OrOper -> "||"
+  | Mod -> "%"
   | _ -> throw_except (ASTError "unexpected binary operator")
 [@@deriving show]
 
@@ -350,6 +352,9 @@ let parse_multiply_operation text pos =
               incr cur_pos_on_line;
               Divide
           | _ -> Invalid)
+    | '%' ->
+        incr pos;
+        Mod
     | _ -> Invalid
 
 let parse_bool_operation text pos =
@@ -880,4 +885,6 @@ let check_program_end text pos =
 
 let parse_program text =
   let pos = ref 0 in
-  parse_structures text pos check_program_end
+  let e = parse_structures text pos check_program_end in
+  List.iter (fun s -> print_endline (string_of_structure s)) e;
+  e

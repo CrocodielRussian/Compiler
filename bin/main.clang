@@ -1,3 +1,5 @@
 def main() {
+    var a := 10;
+    print_int(a %3);
     return print_char(49) + print_char(10);
 }
