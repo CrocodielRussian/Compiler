@@ -93,7 +93,7 @@ def main() {
 
 ### Execution
 ```bash
-dune exec compiler -- bin/main.clang lang/main.s
+dune exec compiler -- bin/main.clang lang/main.s --compile
 ```
 ```bash
 make run
@@ -150,14 +150,14 @@ def main() {
 ### Fibonacci of n
 ```clang
 def fibonachi(n) {
-	a:=0; b:=1;
+	var a:=0; var b:=1;
 	while n>1 do
 		b:=a+b;
-		a:=b–a;
-		n:=n–1;
+		a:=b-a;
+		n:=n-1;
 	done
 	return b;
-  }
+}
 
 def main() {
 	var n := read_int();
