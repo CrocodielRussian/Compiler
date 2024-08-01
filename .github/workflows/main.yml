@@ -55,10 +55,11 @@ jobs:
         #opam depext zanuda reviewer -y
 
       - name: Building...
-        # run: opam exec -- dune build --profile=release
+        run: opam exec -- dune build --profile=release
+
       - run: opam exec -- dune build @install --profile=release
 
-      - name: Linter...
+      - name: linter...
         run: opam exec -- zanuda -dir .
 
       - name: Running tests in release...
