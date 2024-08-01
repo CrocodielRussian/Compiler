@@ -8,3 +8,4 @@ lang/*.s
 *.exe
 *.txt
 *.clang
+*.gdb_history
