@@ -14,52 +14,6 @@ This project is simple compiler of programmer language `ChimeraLang`. It do the 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## `ChimeraLang` grammar
-### Expressions
-```grammar
-<add-operation> = + | -
-<mult-operation> = * | / | %
-<integer> = [0-9]+
-<indetifier> = [a-zA-Z_]+
-<unary-expression> = +<unit-expression> | -<unit-expression> | !<unit-expression>
-<unit-expression> = <unary> | (<expression>) | <integer> | <indetifier> | <func-call>
-<func-call> = <indetifier>(<expression-list>)
-<mult-expression> = <unary-expression> | <unary-expression><mult-operation><mult-expression>
-<math-expression> = <mult-expression> | <mult-expression><add-operation><math-expression>
-<compare-expression> = <math-expression> | <math-expression><compare-operation><compare-expression>
-<bool-operation> = && | ||
-<bool-expression> = <compare-expression> | <compare-expression><bool-operation><bool-expression>
-<assign-operation> = := | += | -= | *= | /=
-<assign-expression> = <indetifier><assign-operation><expression>
-<expression> = <bool-expression> | <assign-expression>
-<expression-list> = e | <expression>,<expression-list>
-```
-
-### Statements
-```grammar
-<break-statement> = break
-<return-statement> = return <expression>;
-<if-statement> = if <expression> then <statement-list> else <statement-list> endif
-<while-statement> = while <expression> do <statement-list> done
-<expression-statement> = <expression>;
-<var-init-statement> = var <indetifier> := <expression>;
-<statement> = <var-init-statement> | <expression-statement> | <while-statement> | <if-statement> | <return-statement> | <break-statement>
-<statement-list> = e | <statement><statement-list>
-```
-
-### Structures
-```grammar
-<func-define-struct> = def <indetifier>(var-list){<statement-list>}
-<struct> = <func-define-struct>
-<struct-list> = e | <struct-list>
-```
-
-### Program
-```grammar
-<program> = <struct-list>
-```
-
-
 ## Getting started
 
 To run building application, and execute it commands:
@@ -73,6 +27,11 @@ git clone https://github.com/CrocodielRussian/Compiler
 #### RISC-V AS and LD, GDB Multiarch, qemu-user 
 ```bash
 sudo apt install --yes binutils-riscv64-linux-gnu gdb-multiarch qemu-user
+```
+#### Dune and Opam
+```bash
+opam pin add ./ -n
+opam install . --deps-only --with-test --with-doc
 ```
 
 ### Build
@@ -165,6 +124,53 @@ def main() {
 	return 0;
 }
 ```
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## `ChimeraLang` grammar
+### Expressions
+```grammar
+<add-operation> = + | -
+<mult-operation> = * | / | %
+<integer> = [0-9]+
+<indetifier> = [a-zA-Z_]+
+<unary-expression> = +<unit-expression> | -<unit-expression> | !<unit-expression>
+<unit-expression> = <unary> | (<expression>) | <integer> | <indetifier> | <func-call>
+<func-call> = <indetifier>(<expression-list>)
+<mult-expression> = <unary-expression> | <unary-expression><mult-operation><mult-expression>
+<math-expression> = <mult-expression> | <mult-expression><add-operation><math-expression>
+<compare-expression> = <math-expression> | <math-expression><compare-operation><compare-expression>
+<bool-operation> = && | ||
+<bool-expression> = <compare-expression> | <compare-expression><bool-operation><bool-expression>
+<assign-operation> = := | += | -= | *= | /=
+<assign-expression> = <indetifier><assign-operation><expression>
+<expression> = <bool-expression> | <assign-expression>
+<expression-list> = e | <expression>,<expression-list>
+```
+
+### Statements
+```grammar
+<break-statement> = break
+<return-statement> = return <expression>;
+<if-statement> = if <expression> then <statement-list> else <statement-list> endif
+<while-statement> = while <expression> do <statement-list> done
+<expression-statement> = <expression>;
+<var-init-statement> = var <indetifier> := <expression>;
+<statement> = <var-init-statement> | <expression-statement> | <while-statement> | <if-statement> | <return-statement> | <break-statement>
+<statement-list> = e | <statement><statement-list>
+```
+
+### Structures
+```grammar
+<func-define-struct> = def <indetifier>(var-list){<statement-list>}
+<struct> = <func-define-struct>
+<struct-list> = e | <struct-list>
+```
+
+### Program
+```grammar
+<program> = <struct-list>
+```
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Authors
