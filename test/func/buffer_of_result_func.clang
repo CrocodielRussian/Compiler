@@ -1,0 +1,10 @@
+def sum(a, b){
+    return a + b;
+}
+def diff(a, b){
+    return a - b;
+}
+def main(){
+    print_int(sum(10, 20) + diff(20, 10));
+    return 0;
+}

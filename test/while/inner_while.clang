@@ -1,0 +1,11 @@
+def main(){
+    var a := 0;
+    var b := 0;
+    while(b < 5) do
+        while(a < 5) do
+            a += 1;
+        done
+        b += 1;
+    done
+    return 0;
+}

@@ -1,0 +1,81 @@
+(cram
+ (deps
+  io.o  input.txt simple_func.exe recursion.exe buffer_of_result_func.exe print_int.exe read_int.exe))
+
+(rule
+ (targets io.o)
+ (action
+  (progn
+   (run
+    riscv64-linux-gnu-as
+    -march=rv64gc
+    %{project_root}/lang/stdlib/io.s
+    -o
+    %{targets}))))
+
+(rule
+ (targets simple_func.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang simple_func.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} simple_func.s --compile)
+   (run riscv64-linux-gnu-as -march=rv64gc simple_func.s -o simple_func.o)
+   (run riscv64-linux-gnu-ld simple_func.o %{lib} -o %{targets}))))
+(rule
+ (targets recursion.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang recursion.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} recursion.s --compile)
+   (run riscv64-linux-gnu-as -march=rv64gc recursion.s -o recursion.o)
+   (run riscv64-linux-gnu-ld recursion.o %{lib} -o %{targets}))))
+
+(rule
+ (targets buffer_of_result_func.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang buffer_of_result_func.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} buffer_of_result_func.s --compile)
+   (run riscv64-linux-gnu-as -march=rv64gc buffer_of_result_func.s -o buffer_of_result_func.o)
+   (run riscv64-linux-gnu-ld buffer_of_result_func.o %{lib} -o %{targets}))))
+(rule
+ (targets print_int.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang print_int.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} print_int.s --compile)
+   (run riscv64-linux-gnu-as -march=rv64gc print_int.s -o print_int.o)
+   (run riscv64-linux-gnu-ld print_int.o %{lib} -o %{targets}))))
+(rule
+ (targets read_int.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang read_int.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} read_int.s --compile)
+   (run riscv64-linux-gnu-as -march=rv64gc read_int.s -o read_int.o)
+   (run riscv64-linux-gnu-ld read_int.o %{lib} -o %{targets}))))

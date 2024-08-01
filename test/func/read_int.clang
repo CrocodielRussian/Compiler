@@ -1,0 +1,11 @@
+def main(){
+    
+    var a := read_int();
+    var b := read_int();
+    var c := read_int();
+    print_int(a);
+    print_int(b);
+    print_int(c);
+
+    return 0;
+}

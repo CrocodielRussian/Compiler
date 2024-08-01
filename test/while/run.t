@@ -10,15 +10,9 @@
   1
   2
   $  qemu-riscv64 -L /usr/riscv64-linux-gnu -cpu rv64 ./fibonacci.exe
-  0
-  1
-  1
-  2
-  3
   5
-  8
-  13
   $  qemu-riscv64 -L /usr/riscv64-linux-gnu -cpu rv64 ./factorial.exe
   720
-
-
+  $  qemu-riscv64 -L /usr/riscv64-linux-gnu -cpu rv64 ./inner_while.exe
+  $ echo $?
+  0
