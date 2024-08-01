@@ -1,6 +1,6 @@
 (cram
  (deps
-  io.o  input.txt simple_func.exe recursion.exe buffer_of_result_func.exe print_int.exe read_int.exe))
+  io.o simple_func.exe recursion.exe buffer_of_result_func.exe print_int.exe read_int.exe))
 
 (rule
  (targets io.o)
