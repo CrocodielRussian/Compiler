@@ -39,7 +39,7 @@ opam install . --deps-only --with-test --with-doc
 dune build
 ```
 
-### Create source `bin/main.clang` and write some *`ChimeraLang`* code
+### Create source `bin/main.clang` and write some *`Oberon`* code
 
 ```clang
 def main() {
@@ -126,7 +126,7 @@ def main() {
 ```
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## `ChimeraLang` grammar
+## `Oberon` grammar
 ### Expressions
 ```grammar
 <add-operation> = + | -
