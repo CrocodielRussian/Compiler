@@ -54,13 +54,12 @@ jobs:
           opam install . --deps-only --with-test --with-doc
         #opam depext zanuda reviewer -y
 
-      - name: linter...
-        run: opam exec -- zanuda -dir .
-
       - name: Building...
-        run: opam exec -- dune build --profile=release
-
+        # run: opam exec -- dune build --profile=release
       - run: opam exec -- dune build @install --profile=release
+
+      - name: Linter...
+        run: opam exec -- zanuda -dir .
 
       - name: Running tests in release...
         run: |
