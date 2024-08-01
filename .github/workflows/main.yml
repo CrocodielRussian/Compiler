@@ -1,0 +1,110 @@
+name: Build Master in docker
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+  push:
+    branches:
+      - 'main'
+
+env:
+  OPAMROOT: /home/opam/.opam
+  #OPAMYES: true
+  OPAMCONFIRMLEVEL: unsafe-yes
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+
+    runs-on: ${{ matrix.os }}
+    container:
+      image: ocaml/opam:ubuntu-lts-ocaml-4.14
+      options: --user root               # dirty hack
+
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      # https://github.com/styfle/cancel-workflow-action
+      # - name: Cancel Previous Runs
+      #   uses: styfle/cancel-workflow-action@0.11.0
+      #   with:
+      #     access_token: ${{ github.token }}
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      # By some reason depext doesn't install it for conf-autoconf
+      - run: |
+          sudo apt-get update -y
+          sudo apt-get install autoconf -y
+
+      # checking out the code seems to be important because local switch is used
+      - name: Installing dependencies
+        run: |
+          opam pin add ./ -n
+          opam install . --deps-only --with-test --with-doc
+        #opam depext zanuda reviewer -y
+
+      - name: Building...
+        run: opam exec -- dune build --profile=release
+
+      - run: opam exec -- dune build @install --profile=release
+
+      - name: Running tests in release...
+        run: |
+          opam exec -- dune test --profile=release
+
+      - name: Send coverage report to Coveralls
+        if: github.event_name != 'pull_request'
+        run: |
+          git config --global --add safe.directory /__w/zanuda/zanuda
+          opam exec -- make coverage
+          opam exec -- bisect-ppx-report send-to Coveralls --coverage-path $BISECT_DIR
+        env:
+          BISECT_DIR: /tmp/zanudacov
+          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST_NUMBER: ${{ github.event.number }}
+
+
+      - name: Build linter descriptions...
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p _build/_lintinfo
+          opam exec -- dune exec zanuda -- -dump-lints _build/_lintinfo/lints.json
+
+      - name: Deploy linters' descriptions
+        if: github.event_name != 'pull_request'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _build/_lintinfo
+          keep_files: true
+          destination_dir: lints
+
+      - name: Build API documentation
+        if: github.event_name != 'pull_request'
+        run: |
+          opam exec -- make install odig
+          echo "ODIG_DOC_LOC=$(opam exec -- odig cache path)/html" >> $GITHUB_ENV
+        #opam exec -- gh-pages-amend $(odig cache path)/html doc
+
+      - name: Test
+        if: github.event_name != 'pull_request'
+        run: echo ${{ env.ODIG_DOC_LOC }}
+
+      - name: Deploy API documentation
+        if: github.event_name != 'pull_request'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ${{ env.ODIG_DOC_LOC }}
+          keep_files: true
+          destination_dir: api
