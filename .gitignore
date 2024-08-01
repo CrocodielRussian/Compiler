@@ -1,7 +1,6 @@
 _build
 .vscode
 target/
-compiler.opam
 !lang/stdlib/*.s
 !test/*.clang
 lang/*.s
