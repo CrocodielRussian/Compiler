@@ -45,6 +45,7 @@ jobs:
       - run: |
           sudo apt-get update -y
           sudo apt-get install autoconf -y
+          sudo apt install --yes binutils-riscv64-linux-gnu qemu-user
 
       # checking out the code seems to be important because local switch is used
       - name: Installing dependencies
