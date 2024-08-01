@@ -160,11 +160,17 @@ let expect_symbol text pos symbol =
 let count_of_newline = ref 0
 let cur_pos_on_line = ref 0
 
+(**
+   Skips any whitespace characters in the given string starting from the specified position.
+   It also updates the line count and current position on the line accordingly.
+
+   [text] The string to be processed.
+   [pos] The mutable reference to the current position in the string.
+*)
 let skip_whitespaces text pos =
   let length = String.length text in
   while !pos < length && is_whitespace text.[!pos] do
     if is_newline text.[!pos] then (
-      (*  print_endline (string_of_int !count_of_newline); *)
       incr count_of_newline;
       cur_pos_on_line := 0)
     else ();
@@ -172,6 +178,19 @@ let skip_whitespaces text pos =
     incr cur_pos_on_line
   done
 
+(**
+   Parses a positive number from a given string.
+
+   Parameters:
+   - [text]: The string representation of the program.
+   - [pos]: A mutable reference to keep track of the current position in the string.
+
+   Returns:
+   - [Number n]: If the positive number is successfully parsed, it returns a [Number] record with the integer value of the number.
+   - [ParserError]: If the positive number cannot be parsed, it throws a [ParserError] exception.
+
+   The function skips any whitespace characters, initializes an accumulator to store the digits of the number, and iterates through the characters of the string until it encounters a non-digit character. It then converts the accumulated digits into an integer and returns a [Number] record with the value. If no digits are found, it throws a [ParserError] exception.
+*)
 let positive_number text pos =
   skip_whitespaces text pos;
   let acc = ref "" in
@@ -186,6 +205,16 @@ let positive_number text pos =
     throw_except
       (ParserError (!count_of_newline, !cur_pos_on_line, "couldn't find numbers"))
 
+(**
+   Parses an identifier from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+
+   The function creates a reference to hold the parsed identifier and enters a loop that continues until the current position is past the end of the string or the current character is not an alphabetic character or an underscore.
+   In each iteration, it appends the current character to the identifier reference and increments the position.
+   After the loop, it returns the final parsed identifier.
+*)
 let identifier text pos =
   let acc = ref "" in
   while
@@ -197,6 +226,20 @@ let identifier text pos =
   done;
   !acc
 
+(**
+   Parses a variable from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then extracts an identifier from the string starting at the current position.
+   If the identifier is a valid variable (i.e., it is not empty and has been initialized),
+   it returns a [Variable] expression with the identifier.
+   If the identifier is not a valid variable, it prints an error message and raises a [LogicErrorParsing] exception.
+   If the identifier is empty, it raises a [ParserError] exception.
+*)
 let variable text pos initialised_variables =
   skip_whitespaces text pos;
   let acc = identifier text pos in
@@ -214,6 +257,19 @@ let variable text pos initialised_variables =
       (ParserError
          (!count_of_newline, !cur_pos_on_line, "couldn't find variable"))
 
+(**
+   Checks if a semicolon exists at the current position in the given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+
+   The function first skips any whitespace characters.
+   It then checks if the current position is within the bounds of the string.
+   If it is not, it returns false.
+   If it is, it matches the character at the current position with a semicolon.
+   If the character is a semicolon, it increments the position and returns true.
+   If the character is not a semicolon, it returns false.
+*)
 let check_exists_simple_stmt_close text pos =
   skip_whitespaces text pos;
   if !pos < String.length text then
@@ -225,6 +281,18 @@ let check_exists_simple_stmt_close text pos =
     | _ -> false
   else false
 
+(**
+   [check_expr_stmt_close] checks if the given position in the text represents the closing symbol of an expression statement.
+
+   Parameters:
+   - [text]: The string representation of the program.
+   - [pos]: A mutable reference to keep track of the current position in the string.
+   - [expression]: The expression to be included in the expression statement.
+
+   Returns:
+   - [Expression expression]: If the closing symbol is found, it returns an [Expression] record with the given expression.
+   - [ParserError]: If the closing symbol is not found, it throws a [ParserError] exception.
+*)
 let check_expr_stmt_close text pos expression =
   skip_whitespaces text pos;
   if check_exists_simple_stmt_close text pos then Expression expression
@@ -235,6 +303,19 @@ let check_expr_stmt_close text pos expression =
            !cur_pos_on_line,
            "couldn't find close symbol of expression statement: ';'" ))
 
+(**
+   Parses an assignment operation from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+
+   The function first skips any whitespace characters.
+   It then checks if the current position plus two is within the bounds of the string.
+   If it is not, it returns [InvalidAssing].
+   Otherwise, it matches the substring from the current position to the current position plus two with the assignment operators.
+   If a match is found, it updates the position and returns the corresponding [assign_oper] value.
+   If no match is found, it returns [InvalidAssing].
+*)
 let parse_assign_operation text pos =
   skip_whitespaces text pos;
   if !pos + 2 > String.length text then InvalidAssing
@@ -257,6 +338,24 @@ let parse_assign_operation text pos =
         MultiplyAssign
     | _ -> InvalidAssing
 
+(**
+   Parses a compare operation from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+
+   The function first skips any whitespace characters.
+   It then checks if the current position is within the bounds of the string.
+   If it is not, it returns [Invalid].
+   Otherwise, it extracts the symbol at the current position.
+   If the symbol is '>' or '<', it checks if the next character is '='.
+   If it is, it returns the appropriate [oper] value.
+   If it isn't, it returns the appropriate [oper] value.
+   If the symbol is '!' or '=', it checks if the next character is '='.
+   If it is, it returns the appropriate [oper] value.
+   If it isn't, it throws a [ParserError] exception.
+   If the symbol doesn't match any of the above cases, it returns [Invalid].
+*)
 let parse_compare_operation text pos =
   skip_whitespaces text pos;
   if !pos < 0 || !pos >= String.length text then Invalid
@@ -302,6 +401,21 @@ let parse_compare_operation text pos =
                  "find unexpected compare operator" ))
     | _ -> Invalid
 
+(**
+   Parses an adding operation from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+
+   The function first skips any whitespace characters.
+   It then checks if the current position is within the bounds of the string.
+   If it is not, it returns [Invalid].
+   Otherwise, it extracts the symbol at the current position.
+   If the symbol is '+' or '-', it checks if the next character is '='.
+   If it is, it returns [Invalid].
+   If it isn't, it increments the position and returns the appropriate [oper] value.
+   If the symbol is neither '+' nor '-', it returns [Invalid].
+*)
 let parse_adding_operation text pos =
   skip_whitespaces text pos;
   if !pos < 0 || !pos >= String.length text then Invalid
@@ -323,6 +437,21 @@ let parse_adding_operation text pos =
           | _ -> Invalid)
     | _ -> Invalid
 
+(**
+   Parses a multiplication or division operation from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+
+   The function first skips any whitespace characters.
+   It then checks if the current position is within the bounds of the string.
+   If it is not, it returns [Invalid].
+   Otherwise, it extracts the symbol at the current position.
+   If the symbol is '*' or '/', it checks if the next character is '='.
+   If it is, it returns [Invalid].
+   If it isn't, it increments the position and returns the appropriate [oper] value.
+   If the symbol is neither '*' nor '/', it returns [Invalid].
+*)
 let parse_multiply_operation text pos =
   skip_whitespaces text pos;
   if !pos < 0 || !pos >= String.length text then Invalid
@@ -357,6 +486,20 @@ let parse_bool_operation text pos =
         OrOper
     | _ -> Invalid
 
+(**
+   Parses an expression from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then creates a reference to hold the parsed expression and another reference to hold the parsed operation.
+   It enters a loop that continues until the current position is past the end of the string or the parsed operation is invalid.
+   In each iteration, it updates the expression reference to hold an assignment expression with the current expression, operation, and the next simplest expression.
+   If the parsed expression is not a variable, it resets the position to the start position and parses a boolean expression instead.
+   After the loop, it returns the final parsed expression.
+*)
 let rec parse_expr (text : string) (pos : int ref)
     (initialised_variables : StringSet.t ref) : expr =
   skip_whitespaces text pos;
@@ -376,6 +519,20 @@ let rec parse_expr (text : string) (pos : int ref)
       pos := start_pos;
       parse_bool_expr text pos initialised_variables
 
+(**
+   Parses a boolean expression from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then creates a mutable reference to hold the parsed expression and another mutable reference to hold the parsed operation.
+   It enters a loop that continues until the current position is past the end of the string or the parsed operation is invalid.
+   In each iteration, it updates the expression reference to hold a binary operation with the current expression, operation, and the next simplest expression.
+   It also updates the operation reference to hold the next parsed operation.
+   After the loop, it returns the final parsed expression.
+*)
 and parse_bool_expr text pos initialised_variables =
   skip_whitespaces text pos;
   let expression = ref (parse_compare_expr text pos initialised_variables) in
@@ -390,6 +547,20 @@ and parse_bool_expr text pos initialised_variables =
   done;
   !expression
 
+(**
+   Parses a comparison expression from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then creates a mutable reference to hold the parsed expression and another mutable reference to hold the parsed operation.
+   It enters a loop that continues until the current position is past the end of the string or the parsed operation is invalid.
+   In each iteration, it updates the expression reference to hold a binary operation with the current expression, operation, and the next simplest expression.
+   It also updates the operation reference to hold the next parsed operation.
+   After the loop, it returns the final parsed expression.
+*)
 and parse_compare_expr text pos initialised_variables =
   skip_whitespaces text pos;
   let expression = ref (parse_math_expr text pos initialised_variables) in
@@ -402,6 +573,20 @@ and parse_compare_expr text pos initialised_variables =
   done;
   !expression
 
+(**
+   Parses a mathematical expression from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then creates a mutable reference to hold the parsed expression and another mutable reference to hold the parsed operation.
+   It enters a loop that continues until the current position is past the end of the string or the parsed operation is invalid.
+   In each iteration, it updates the expression reference to hold a binary operation with the current expression, operation, and the next simplest expression.
+   It also updates the operation reference to hold the next parsed operation.
+   After the loop, it returns the final parsed expression.
+*)
 and parse_math_expr text pos initialised_variables =
   skip_whitespaces text pos;
   let expression = ref (parse_mult_expr text pos initialised_variables) in
@@ -414,6 +599,20 @@ and parse_math_expr text pos initialised_variables =
   done;
   !expression
 
+(**
+   Parses a multiplication or division expression from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then creates a mutable reference to hold the parsed expression and another mutable reference to hold the parsed operation.
+   It enters a loop that continues until the current position is past the end of the string or the parsed operation is invalid.
+   In each iteration, it updates the expression reference to hold a binary operation with the current expression, operation, and the next simplest expression.
+   It also updates the operation reference to hold the next parsed operation.
+   After the loop, it returns the final parsed expression.
+*)
 and parse_mult_expr text pos initialised_variables =
   skip_whitespaces text pos;
   let expression = ref (parse_simplest_expr text pos initialised_variables) in
@@ -428,6 +627,28 @@ and parse_mult_expr text pos initialised_variables =
   done;
   !expression
 
+(**
+   Parses the simplest expression from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then checks the current character and performs the appropriate action:
+   - If the character is '-', it increments the position, creates a unary minus expression,
+     and recursively calls itself to parse the next simplest expression.
+   - If the character is '+', it increments the position and recursively calls itself to parse the next simplest expression.
+   - If the character is '!', it increments the position, creates a unary not expression,
+     and recursively calls itself to parse the next simplest expression.
+   - If the character is '(', it increments the position, parses an expression,
+     checks for a closing parenthesis, and returns the parsed expression.
+   - If the character is a digit, it calls the [positive_number] function to parse a positive number.
+   - If the character is a letter, it checks if the identifier is a function call.
+     If it is, it calls the [parse_func_call] function to parse the function call.
+     If it isn't, it calls the [variable] function to parse a variable.
+   - If the character doesn't match any of the above cases, it throws a [ParserError] exception.
+*)
 and parse_simplest_expr text pos initialised_variables =
   skip_whitespaces text pos;
   if !pos >= String.length text then EmptyExpression
@@ -475,6 +696,24 @@ and parse_simplest_expr text pos initialised_variables =
                !cur_pos_on_line,
                "unexpected symbol: '" ^ Char.escaped text.[!pos] ^ "'" ))
 
+(**
+   Parses a function call from a given string.
+
+   [ident] is the identifier of the function being called.
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then checks if the current position is a '(' symbol.
+   If it is not, it throws a ParserError.
+   If it is, it increments the position and proceeds to parse the function arguments.
+
+   The function creates a [FuncCall] record with the identifier and the parsed function arguments.
+   It then checks if the current position is a ')' symbol.
+   If it is not, it throws a ParserError.
+   If it is, it increments the position and returns the [FuncCall] record.
+*)
 and parse_func_call ident text pos initialised_variables =
   skip_whitespaces text pos;
   let symbol = text.[!pos] in
@@ -544,6 +783,21 @@ and parse_func_call ident text pos initialised_variables =
              "couldn't find symbol of open bracket of function call: '('. Find \
               symbol: '" ^ Char.escaped symbol ))
 
+(**
+   Parses an expression statement from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then extracts an expression from the string using the [parse_expr] function.
+   It matches the result of the expression extraction:
+   - If the expression is empty, it returns an [EmptyStatement].
+   - If the expression is not empty, it checks if the statement is followed by a semicolon ";".
+     If it is, it returns an [ExpressionStatement] with the parsed expression.
+     If it isn't, it throws a [ParserError] exception.
+*)
 let parse_expr_statement text pos initialised_variables =
   skip_whitespaces text pos;
   let result = parse_expr text pos initialised_variables in
@@ -551,6 +805,23 @@ let parse_expr_statement text pos initialised_variables =
   | EmptyExpression -> EmptyStatement
   | _ -> check_expr_stmt_close text pos result
 
+(**
+   Parses an assignment statement from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then extracts the identifier for the variable being assigned.
+   It checks if the identifier already exists in the set of initialized variables.
+   If it does, it throws a LogicErrorParsing exception.
+   If it doesn't, it asserts the assignment operator ":=".
+   It then creates an AssignStatement record with the identifier and the parsed expression.
+   It checks if the statement is followed by a semicolon ";".
+   If it is, it adds the identifier to the set of initialized variables and returns the AssignStatement record.
+   If it isn't, it throws a ParserError exception.
+*)
 let assert_assign_statement_op text pos =
   skip_whitespaces text pos;
   match String.sub text !pos 2 with
@@ -562,6 +833,23 @@ let assert_assign_statement_op text pos =
              !cur_pos_on_line,
              "couldn't find assign operator. Find " ^ String.sub text !pos 2 ))
 
+(**
+   Parses an assignment statement from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then extracts the identifier for the variable being assigned.
+   It checks if the identifier already exists in the set of initialized variables.
+   If it does, it throws a LogicErrorParsing exception.
+   If it doesn't, it asserts the assignment operator ":=".
+   It then creates an AssignStatement record with the identifier and the parsed expression.
+   It checks if the statement is followed by a semicolon ";".
+   If it is, it adds the identifier to the set of initialized variables and returns the AssignStatement record.
+   If it isn't, it throws a ParserError exception.
+*)
 let parser_assign_statement text pos initialised_variables =
   skip_whitespaces text pos;
   let ident = identifier text pos in
@@ -586,6 +874,19 @@ let parser_assign_statement text pos initialised_variables =
              !cur_pos_on_line,
              "couldn't find close symbol of statement: ';'" ))
 
+(**
+   [check_do_exists] checks if the current position in the string represents the existence of a "do" construction.
+
+   Parameters:
+   - [text]: The string representation of the program.
+   - [pos]: A mutable reference to keep track of the current position in the string.
+
+   Returns:
+   - A boolean value indicating whether the current position represents the existence of a "do" construction.
+     The function returns true if the current position is less than the length of the string and the substring starting from the current position matches "do".
+     Otherwise, it returns false.
+     If the current position is past the end of the string, it throws a ParserError.
+*)
 let check_do_exists text pos =
   skip_whitespaces text pos;
   if !pos + 2 < String.length text then
@@ -598,12 +899,36 @@ let check_do_exists text pos =
     throw_except
       (ParserError (!count_of_newline, !cur_pos_on_line, "couldn't find do"))
 
+(**
+   Checks if the current position in the string represents the existence of a "done" construction.
+
+   Parameters:
+   - [text]: The string representation of the program.
+   - [pos]: A mutable reference to keep track of the current position in the string.
+
+   Returns:
+   - A boolean value indicating whether the current position represents the existence of a "done" construction.
+     The function returns true if the current position is less than the length of the string and the substring starting from the current position matches "done".
+     Otherwise, it returns false.
+*)
 let check_done_exists text pos =
   skip_whitespaces text pos;
   if !pos + 4 < String.length text then
     match String.sub text !pos 4 with "done" -> false | _ -> true
   else false
 
+(**
+   Checks if the current position in the string represents the existence of a "then" construction.
+
+   Parameters:
+   - [text]: The string representation of the program.
+   - [pos]: A mutable reference to keep track of the current position in the string.
+
+   Returns:
+   - A boolean value indicating whether the current position represents the existence of a "then" construction.
+     The function returns true if the current position is less than the length of the string and the substring starting from the current position matches "then".
+     Otherwise, it returns false.
+*)
 let check_then_exists text pos =
   skip_whitespaces text pos;
   if !pos + 4 < String.length text then
@@ -616,6 +941,18 @@ let check_then_exists text pos =
     throw_except
       (ParserError (!count_of_newline, !cur_pos_on_line, "couldn't find then"))
 
+(**
+   Checks if the current position in the string represents the existence of an "else" or "endif" construction.
+
+   Parameters:
+   - [text]: The string representation of the program.
+   - [pos]: A mutable reference to keep track of the current position in the string.
+
+   Returns:
+   - A boolean value indicating whether the current position represents the existence of an "else" or "endif" construction.
+     The function returns true if the current position is less than the length of the string and the substring starting from the current position matches either "else " or "endif".
+     Otherwise, it returns false.
+*)
 let check_else_and_endif_construction_exists text pos =
   skip_whitespaces text pos;
   if !pos + 5 < String.length text then
@@ -635,6 +972,26 @@ let check_endif_exists_and_skip text pos =
     | _ -> true
   else false
 
+(**
+   Parses a while loop statement from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then checks if the current position is past the end of the string.
+   If it is, it throws a ParserError.
+   Otherwise, it parses the boolean expression for the while loop.
+
+   The function then checks if the "do" keyword exists at the current position.
+   If it does not, it throws a ParserError.
+   If it does, it skips the "do" keyword and proceeds to parse the statements within the while loop.
+
+   The function then checks if the "done" keyword exists at the current position.
+   If it does not, it throws a ParserError.
+   If it does, it skips the "done" keyword and returns the While record containing the boolean expression and the statements within the while loop.
+*)
 let rec parse_while_loop_statement text pos initialised_variables =
   skip_whitespaces text pos;
   if !pos > String.length text then
@@ -671,6 +1028,27 @@ let rec parse_while_loop_statement text pos initialised_variables =
       throw_except
         (ParserError (!count_of_newline, !cur_pos_on_line, "couldn't find do"))
 
+(**
+   Parses an if statement from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first checks if the current position is past the end of the string.
+   If it is, it throws a ParserError.
+   Otherwise, it parses the boolean expression for the if statement.
+
+   The function then checks if the "then" keyword exists at the current position.
+   If it does not, it throws a ParserError.
+   If it does, it skips the "then" keyword and proceeds to parse the statements within the if block.
+
+   The function then checks if the "else" keyword exists at the current position.
+   If it does, it skips the "else" keyword and proceeds to parse the statements within the else block.
+   If it does not, it adds an empty statement to the else block.
+
+   Finally, the function returns an If record containing the boolean expression, the statements within the if block, and the statements within the else block.
+*)
 and parse_if_statement text pos initialised_variables =
   if !pos > String.length text then
     throw_except
@@ -713,6 +1091,24 @@ and parse_if_statement text pos initialised_variables =
       throw_except
         (ParserError (!count_of_newline, !cur_pos_on_line, "couldn't find then"))
 
+(**
+   Parses a sequence of statements from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [check] is a function that checks if the parsing should continue.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function initializes a list to keep track of the statements.
+   It then enters a loop to parse each statement.
+   It skips any whitespace characters.
+   It checks if the next characters form a keyword (e.g., "while", "if", "var", "return", "break").
+   Depending on the keyword, it calls the appropriate parsing function.
+   It adds the parsed statement to the list of statements.
+   It continues to the next statement until the [check] function returns false.
+
+   The function returns the list of statements.
+*)
 and parse_statements text pos check initialised_variables =
   let all = ref [] in
   while check text pos do
@@ -749,10 +1145,45 @@ and parse_statements text pos check initialised_variables =
   done;
   !all
 
+(**
+   Checks if the current position in the string represents the end of a function's statements.
+
+   Parameters:
+   - [text]: The string representation of the program.
+   - [pos]: A mutable reference to keep track of the current position in the string.
+
+   Returns:
+   - A boolean value indicating whether the current position represents the end of a function's statements.
+     The function returns true if the current position is less than the length of the string and the character at the current position is not a closing curly brace '}'.
+     Otherwise, it returns false.
+*)
+
 let check_func_stmts_end text pos =
   skip_whitespaces text pos;
   !pos < String.length text && not (expect_symbol text !pos '}')
 
+(**
+   Parses the statements within a function from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+   [initialised_variables] is a set of variables that have already been initialized.
+
+   The function first skips any whitespace characters.
+   It then checks if the next character is an open curly brace '{'.
+   If it is not, it throws a ParserError.
+   If it is, it increments the position and proceeds to parse the statements.
+
+   The function initializes a list to keep track of the statements.
+   It then enters a loop to parse each statement.
+   It skips any whitespace characters.
+   It checks if the next character is a closing curly brace '}'.
+   If it is, it breaks out of the loop.
+   If it is not, it assumes the next characters form a statement.
+   It parses the statement and adds it to the list of statements.
+
+   The function then returns the list of statements.
+*)
 let parse_func_stmts text pos initialised_variables =
   skip_whitespaces text pos;
   let symbol = text.[!pos] in
@@ -771,6 +1202,53 @@ let parse_func_stmts text pos initialised_variables =
              !cur_pos_on_line,
              "unexpected symbol: " ^ Char.escaped symbol ^ "without '{'" ))
 
+(**
+   Parses a function structure from a given string.
+
+   [text] is the string representation of the program.
+   [pos] is a mutable reference to keep track of the current position in the string.
+
+   The function first skips any whitespace characters.
+   It then checks if the identifier at the current position is "def".
+   If it is not, it throws a ParserError.
+   If it is, it proceeds to parse the function definition.
+
+   The function checks if the function name is empty.
+   If it is, it throws a ParserError.
+   If it is not, it checks if the function name has already been defined.
+   If it has, it throws a LogicErrorParsing.
+
+   The function adds the function name to the set of initialized functions.
+   It also initializes a set to keep track of the variables defined within the function.
+
+   The function then skips any whitespace characters.
+   It checks if the next character is an open parenthesis.
+   If it is not, it throws a ParserError.
+   If it is, it proceeds to parse the function arguments.
+
+   The function initializes a list to keep track of the function arguments.
+   It then enters a loop to parse each argument.
+   It skips any whitespace characters.
+   It checks if the next character is a comma or a close parenthesis.
+   If it is a comma, it increments the position and continues to the next argument.
+   If it is a close parenthesis, it breaks out of the loop.
+   If it is neither, it assumes the next characters form an argument identifier.
+   It checks if the argument identifier is empty.
+   If it is, it throws a ParserError.
+   If it is not, it adds the argument identifier to the list of function arguments.
+   It also adds the argument identifier to the set of initialized variables.
+
+   The function then adds the function name and the list of function arguments to the map of function argument counts.
+
+   The function skips any whitespace characters.
+   It checks if the next character is a close parenthesis.
+   If it is not, it throws a ParserError.
+   If it is, it increments the position.
+
+   The function then parses the statements within the function.
+
+   Finally, it returns a FuncStruct record containing the function name, the list of function arguments, and the list of statements within the function.
+*)
 let parse_func_structure text pos =
   skip_whitespaces text pos;
   let ident = identifier text pos in
@@ -844,6 +1322,24 @@ let parse_func_structure text pos =
              "couldn't find symbol of open bracket of function call:"
              ^ Char.escaped symbol ))
 
+(**
+  Parses a program represented as a string.
+
+  [text] is the string representation of the program.
+
+  The function starts parsing from the beginning of the string. It uses a mutable reference [pos] to keep track of the current position in the string.
+
+  The function calls [parse_structures] with the provided [text], [pos], and [check] as arguments.
+
+  [check] is a function that checks if the parsing should continue. In this case, it checks if the current position is less than the length of the string.
+
+  The function returns the result of parsing the structures in the program.
+
+  [text] The string representation of the program.
+  [pos] A mutable reference to keep track of the current position in the string.
+  [check] A function that checks if the parsing should continue.
+  The function returns the result of parsing the structures in the program.
+*)
 let parse_structures text pos check =
   let all = ref [] in
   while check text pos do
@@ -870,6 +1366,19 @@ let check_program_end text pos =
   skip_whitespaces text pos;
   !pos < String.length text
 
+(**
+   Parse a program represented as a string.
+
+   [text] is the string representation of the program.
+
+   The function starts parsing from the beginning of the string. It uses a mutable reference [pos] to keep track of the current position in the string.
+
+   The function calls [parse_structures] with the provided [text], [pos], and [check_program_end] as arguments.
+
+   [check_program_end] is a function that checks if the parsing should continue. In this case, it checks if the current position is less than the length of the string.
+
+   The function returns the result of parsing the structures in the program.
+*)
 let parse_program text =
   let pos = ref 0 in
   parse_structures text pos check_program_end
