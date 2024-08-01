@@ -6,11 +6,11 @@
 [<img alt="logo" src="resources/logo.png" width="100" height="100" align="right">](https://github.com/CrocodielRussian/Compiler)
 
 
-<h1 align="left">ChimeraLang Compiler</h1>
+<h1 align="left">Oberon Compiler</h1>
 
 ## Description
 
-This project is simple compiler of programmer language `ChimeraLang`. It do the parse of `ChimeraLang` code and build AST of that. After, It translte that AST in [`RISC-V`][risc_url] AST. In finnally, it generate [`RISC-V`][risc_url] code for execute of programm.
+This project is simple compiler of programmer language `Oberon`. It do the parse of `Oberon` code and build AST of that. After, It translte that AST in [`RISC-V`][risc_url] AST. In finnally, it generate [`RISC-V`][risc_url] code for execute of programm.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
