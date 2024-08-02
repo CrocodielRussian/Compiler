@@ -24,6 +24,7 @@ type instr =
   | Mul of reg * reg * reg
   | Sub of reg * reg * reg
   | Div of reg * reg * reg
+  | Rem of reg * reg * reg
   | Sgt of reg * reg * reg
   | Slt of reg * reg * reg
   | And of reg * reg * reg
@@ -86,6 +87,7 @@ let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
   | Minus -> [ Sub (reg1, reg2, reg1) ]
   | Multiply -> [ Mul (reg1, reg2, reg1) ]
   | Divide -> [ Div (reg1, reg2, reg1) ]
+  | Mod -> [ Rem (reg1, reg2, reg1) ]
   | More -> [ Sgt (reg1, reg2, reg1) ]
   | Low -> [ Slt (reg1, reg2, reg1) ]
   | MoreOrEqual -> [ Slt (reg1, reg2, reg1); Xori (reg1, reg1, 1) ]
@@ -95,7 +97,7 @@ let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
       [ Sub (reg1, reg2, reg1); Seqz (reg1, reg1); Xori (reg1, reg1, 1) ]
   | AndOper -> [ And (reg1, reg2, reg1) ]
   | OrOper -> [ Or (reg1, reg2, reg1) ]
-  | _ -> throw_except(ASTError("unexpected binary operator"))
+  | _ -> throw_except (ASTError "unexpected binary operator")
 
 let func_call_asm_tree (func_name : string) (args_instructions : instr list)
     (buffer_size : int) : instr list =
