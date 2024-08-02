@@ -170,7 +170,7 @@ and check_changer_op op  =
 and unused_stmt_optimize_assign_statement var ex = 
   match ex with
   | Number n -> initialised_variables := StringMap.add var n !initialised_variables
-  | _ -> failwith "To Do"
+  | _ -> ()
   
 and check_binary_operation (n1 : int) (op : oper) (n2 : int) =
   match op with
@@ -199,7 +199,7 @@ and unused_stmt_optimize_binary_expression ex1 op ex2 =
   | _ -> false
 and unused_stmt_optimize_expression (ex : expr) : bool =
   match ex with
-  | Number n ->  bool_of_int n
+  | Number n -> bool_of_int n
   | Binary (ex1, op, ex2) -> unused_stmt_optimize_binary_expression ex1 op ex2
   | _ -> failwith "unexpected expression"
 
@@ -312,7 +312,7 @@ and unused_stmt_return stmt =
     else 
       EmptyStatement
   )
-  | _ ->  stmt
+  | _ -> stmt
 
 (* let optimize_empty_if (st: structure) : structure =  *)
 let const_optimize_structure (st : structure) : structure =
@@ -322,6 +322,7 @@ let const_optimize_structure (st : structure) : structure =
 let unused_stmt_optimize_structure (st : structure) : structure =
   match st with
   | FuncStruct (name, var_args, stmts) ->
+      List.iter(fun arg -> changeable_variables := StringSet.add arg !changeable_variables) var_args;
       FuncStruct (name, var_args, unused_stmt_optimize_stmts stmts)
 
 let optimize_structures (structures : structure list) : structure list =
@@ -329,6 +330,7 @@ let optimize_structures (structures : structure list) : structure list =
   List.iter
     (fun st -> const_optimize_structures := !const_optimize_structures @ [ const_optimize_structure st ])
     structures;
+    (* List.iter(fun st -> show_structure st |> print_endline) !const_optimize_structures; *)
   let optimize_unused_stmt = ref [] in
   List.iter
   (fun st -> optimize_unused_stmt := !optimize_unused_stmt @ [ unused_stmt_optimize_structure st ])
