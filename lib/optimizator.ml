@@ -313,7 +313,7 @@ let optimize_structures (structures : structure list) : structure list =
   List.iter
   (fun st -> optimize_unused_stmt := !optimize_unused_stmt @ [ unused_stmt_optimize_structure st ])
   !const_optimize_structures;
-  List.iter(fun st -> show_structure st |> print_endline) !optimize_unused_stmt;
+  (* List.iter(fun st -> show_structure st |> print_endline) !optimize_unused_stmt; *)
   !optimize_unused_stmt
 
 let optimize_ast (ast : structure list) : structure list =
