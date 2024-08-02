@@ -1,9 +1,11 @@
-def main(){
-  var a := 10;
-  while(a < 8) do
-    if(a < 8) then
-      print_int(10);
+def nsum(n) {
+    if n <= 0 then 
+      return 0;
     endif
-  done 
-  return 0;
+    
+    return n + nsum(n - 1);
+}
+def main(){
+    print_int(nsum(5));
+    return 0;
 }

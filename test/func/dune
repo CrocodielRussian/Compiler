@@ -1,6 +1,6 @@
 (cram
  (deps
-  io.o simple_func.exe recursion.exe buffer_of_result_func.exe print_int.exe read_int.exe))
+  io.o simple_func.exe recursion.exe buffer_of_result_func.exe print_int.exe read_int.exe several_args_in_func.exe))
 
 (rule
  (targets io.o)
@@ -79,3 +79,16 @@
    (run %{main} %{clang} read_int.s --compile)
    (run riscv64-linux-gnu-as -march=rv64gc read_int.s -o read_int.o)
    (run riscv64-linux-gnu-ld read_int.o %{lib} -o %{targets}))))
+(rule
+ (targets several_args_in_func.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang several_args_in_func.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} several_args_in_func.s --compile)
+   (run riscv64-linux-gnu-as -march=rv64gc several_args_in_func.s -o several_args_in_func.o)
+   (run riscv64-linux-gnu-ld several_args_in_func.o %{lib} -o %{targets}))))

@@ -114,7 +114,7 @@ let rec string_of_statements stmts count_of_t =
   let str_lst =
     List.map (fun stmt -> string_of_statement stmt count_of_t) stmts
   in
-  "\t" ^ String.concat ("\n" ^ String.make count_of_t '\t') str_lst
+  String.concat ("\n") str_lst
 
 and string_of_statement stmt (count_of_t : int) =
   match stmt with
@@ -140,7 +140,9 @@ and string_of_statement stmt (count_of_t : int) =
         ^ (string_of_statements else_stmts (count_of_t+1))
         ^ "\n" ^ (String.make (count_of_t) '\t' ) ^ "endif"
 and string_of_structure = function
-  | FuncStruct(name, arg_var, stmts) ->  let count_of_t = 1 in Printf.sprintf("def %s(%s){\n%s\n}") name (String.concat ", " arg_var) (string_of_statements stmts count_of_t)
+  | FuncStruct(name, arg_var, stmts) -> 
+    Printf.sprintf("def %s(%s){\n%s\n}") name (String.concat ", " arg_var) (string_of_statements stmts 1)
+
 
 let initialised_functions =
   ref
