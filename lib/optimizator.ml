@@ -13,6 +13,10 @@ let eval_binary_operation (n1 : int) (op : oper) (n2 : int) =
       match n2 with
       | 0 -> throw_except (LogicErrorMath "divide by zero")
       | _ -> n1 / n2)
+  | Mod -> (
+      match n2 with
+      | 0 -> throw_except (LogicErrorMath "divide by zero")
+      | _ -> n1 mod n2)
   | Low -> bool_to_int (n1 < n2)
   | LowOrEqual -> bool_to_int (n1 <= n2)
   | More -> bool_to_int (n1 > n2)
