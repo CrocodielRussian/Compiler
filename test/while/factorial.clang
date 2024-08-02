@@ -1,7 +1,7 @@
 def main(){
     var n := 1;
     var acc := 1;
-    while(n < 7) do
+    while(n <= 6) do
         acc := acc * n;
         n += 1;
     done 

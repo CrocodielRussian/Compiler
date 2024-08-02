@@ -5,7 +5,8 @@
   while_with_break.exe
   fibonacci.exe
   inner_while.exe
-  factorial.exe))
+  factorial.exe
+  ))
 
 (rule
  (targets io.o)

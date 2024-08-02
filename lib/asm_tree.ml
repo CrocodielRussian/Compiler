@@ -43,6 +43,14 @@ type instr =
   | EnvCall
 [@@deriving show]
 
+(**
+  [init_variables] is a recursive function that initializes the stack pointer and 
+  maintains a map of variable names to their corresponding stack positions.
+
+  @param [variables_stack_position]: A reference to a mutable map that stores variable names as keys and their corresponding stack positions as values.
+  @param [stack_pointer]: A reference to an integer representing the current stack pointer position.
+  @param [statements]: A list of statements to be processed.
+**)
 let rec init_variables (variables_stack_position : int StringMap.t ref)
     (stack_pointer : int ref) (statements : statement list) =
   List.iter
@@ -60,6 +68,16 @@ let rec init_variables (variables_stack_position : int StringMap.t ref)
       | _ -> ())
     statements
 
+(**
+  [max_min_variable_position] is a function that calculates the maximum and minimum positions 
+  of variables in the given [variables_stack_position] map. It iterates over the map and updates 
+  the [max_pos] and [min_pos] variables accordingly. If the [max_pos] is less than the [min_pos], 
+  it returns the maximum and maximum positions. Otherwise, it returns the minimum and maximum positions.
+
+  @param [variables_stack_position]: A map containing variable names as keys and their corresponding stack positions as values.
+
+  @return: A tuple containing the maximum and minimum positions of variables in the map.
+**)
 let max_min_variable_position (variables_stack_position : int StringMap.t) =
   let max_pos = ref 16 in
   let min_pos = ref 24 in
@@ -69,7 +87,14 @@ let max_min_variable_position (variables_stack_position : int StringMap.t) =
       min_pos := min !min_pos value)
     variables_stack_position;
   if !max_pos < !min_pos then (!max_pos, !max_pos) else (!min_pos, !max_pos)
+(**
+   [map_assign] is a function that maps an [assign_oper] to an [oper]. It is used to handle different types of assignment operations.
 
+   @param [op]: An [assign_oper] representing the type of assignment operation.
+
+   @return An [oper] representing the corresponding operation. 
+   @raise ASTError If the input [op] is [InvalidAssing].
+**)
 let map_assign (op : assign_oper) : oper =
   match op with
   | DefaultAssign -> Invalid
@@ -81,6 +106,17 @@ let map_assign (op : assign_oper) : oper =
       throw_except
         (ASTError ("unexpected assign operator: " ^ string_of_assign_operator op))
 
+(**
+  Converts a binary operation into a list of assembly instructions.
+
+  @param op The binary operation to convert.
+  @param reg1 The first register to use in the assembly instructions.
+  @param reg2 The second register to use in the assembly instructions.
+
+  @return A list of assembly instructions representing the binary operation.
+
+  @raise ASTError If an unexpected binary operator is encountered.
+*)
 let binop_to_asm (op : oper) (reg1 : reg) (reg2 : reg) : instr list =
   match op with
   | Plus -> [ Add (reg1, reg2, reg1) ]
@@ -111,6 +147,17 @@ let func_call_asm_tree (func_name : string) (args_instructions : instr list)
     ]
   else [ Call func_name ]
 
+(**
+   [func_call_asm_tree] generates assembly instructions for a function call.
+   It takes the function name, a list of assembly instructions for the arguments,
+   and the size of the buffer needed for the function call.
+
+   @param func_name [string] The name of the function to call.
+   @param args_instructions [instr list] Assembly instructions for the arguments.
+   @param buffer_size [int] The size of the buffer needed for the function call.
+
+   @return [instr list] Assembly instructions for the function call.
+*)
 let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
     (variables_stack_position : int StringMap.t ref) : instr list =
   match ex with
@@ -178,11 +225,6 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
         in
         let _, max_pos = max_min_variable_position !variables_stack_position in
         let buffer_size = !stack_pointer - max_pos in
-        (* print_endline
-           (Printf.sprintf
-              "func=%s args-count=%d max-pos=%d, arg-buf-size=%d sp=%d, \
-               buf-size=%d"
-              name (List.length expressions) max_pos 0 !stack_pointer buffer_size); *)
         func_call_asm_tree name expr_asm_tree buffer_size
       else (
         List.iter
@@ -206,16 +248,21 @@ let rec expr_to_asm_tree (ex : expr) (stack_pointer : int ref)
         let _, max_pos = max_min_variable_position !variables_stack_position in
         let args_buffer_size = 8 * !length in
         let buffer_size = !stack_pointer - max_pos in
-        (* print_endline
-           (Printf.sprintf
-              "func=%s args-count=%d max-pos=%d, arg-buf-size=%d sp=%d, \
-               buf-size=%d"
-              name (List.length expressions) max_pos args_buffer_size
-              !stack_pointer buffer_size); *)
         stack_pointer := !stack_pointer - args_buffer_size;
         func_call_asm_tree name !all_instr buffer_size)
   | EmptyExpression -> []
 
+(**
+    Converts a statement into a list of assembly instructions.
+
+    @param stmt The statement to convert.
+    @param stack_pointer A reference to the current stack pointer.
+    @param variables_stack_position A reference to a map containing the stack positions of variables.
+    @param label_count A reference to the current label count.
+    @param while_end_count A reference to the current while loop end count.
+  
+    @return A list of assembly instructions representing the given statement.
+ *)
 let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
     (variables_stack_position : int StringMap.t ref) (label_count : int ref)
     (while_end_count : int ref) : instr list =
@@ -259,7 +306,18 @@ let rec statement_to_asm_tree (stmt : statement) (stack_pointer : int ref)
       let end_while_label = Printf.sprintf ".while_%d_end" !while_end_count in
       [ Jump end_while_label ]
   | _ -> []
+(**
+    Converts a while loop into a list of assembly instructions.
+    
+    @param ex The expression representing the while loop condition.
+    @param stmts The statements inside the while loop.
+    @param stack_pointer A reference to the current stack pointer.
+    @param variables_stack_position A reference to a map containing the stack positions of variables.
+    @param label_count A reference to the current label count.
+    @param while_end_count A reference to the current while loop end count.
 
+    @return A list of assembly instructions representing the while loop.
+ *)
 and while_loop_to_asm (ex : expr) (stmts : statement list)
     (stack_pointer : int ref) (variables_stack_position : int StringMap.t ref)
     (label_count : int ref) (while_end_count : int ref) : instr list =
@@ -288,6 +346,19 @@ and while_loop_to_asm (ex : expr) (stmts : statement list)
   @ [ Bne (ArgumentReg 0, Zero, while_loop_label_name) ]
   @ [ Jump next_open_label_name; Label next_open_label_name ]
 
+(**
+    Converts a statement into a list of assembly instructions for an if statement.
+
+    @param ex: The expression representing the condition of the if statement.
+    @param then_stmts: The statements to be executed if the condition is true.
+    @param else_stmts: The statements to be executed if the condition is false.
+    @param stack_pointer: A reference to the current stack pointer.
+    @param variables_stack_position: A reference to a map containing the stack positions of variables.
+    @param label_count: A reference to the current label count.
+    @param while_end_count: A reference to the current while loop end count.
+
+    @return: A list of assembly instructions representing the if statement.
+ *)
 and if_stmt_to_asm (ex : expr) (then_stmts : statement list)
     (else_stmts : statement list) (stack_pointer : int ref)
     (variables_stack_position : int StringMap.t ref) (label_count : int ref)
@@ -314,7 +385,17 @@ and if_stmt_to_asm (ex : expr) (then_stmts : statement list)
   @ [ Jump next_open_label_name; Label else_branch_label_name ]
   @ else_stmts_asm_tree
   @ [ Jump next_open_label_name; Label next_open_label_name ]
+(**
+    Converts a list of statements into a list of assembly instructions.
 
+    @param stmts: The list of statements to convert.
+    @param stack_pointer: A reference to the current stack pointer.
+    @param variables_stack_position: A reference to a map containing the stack positions of variables.
+    @param label_count: A reference to the current label count.
+    @param while_end_count: A reference to the current while loop end count.
+
+    @return: A list of assembly instructions representing the given statements.
+ *)
 and stmts_to_asm_tree (stmts : statement list) (stack_pointer : int ref)
     (variables_stack_position : int StringMap.t ref) (label_count : int ref)
     (while_end_count : int ref) : instr list =
@@ -337,6 +418,17 @@ let func_stmts_to_asm_tree stmts stack_pointer variables_stack_position
   in
   stmts_asm_tree
 
+(**
+    Converts a list of statements into a list of assembly instructions.
+
+    @param stmts: The list of statements to convert.
+    @param stack_pointer: A reference to the current stack pointer.
+    @param variables_stack_position: A reference to a map containing the stack positions of variables.
+    @param label_count: A reference to the current label count.
+    @param while_end_count: A reference to the current while loop end count.
+
+    @return: A list of assembly instructions representing the given statements.
+ *)
 let func_to_asm_tree name args_name stmts label_count
     (while_end_count : int ref) =
   let stack_pointer = ref 16 in
@@ -373,6 +465,17 @@ let func_to_asm_tree name args_name stmts label_count
   ]
   @ !all_instr @ func_block
 
+(**
+    Converts a list of statements into a list of assembly instructions.
+
+    @param stmts: The list of statements to convert.
+    @param stack_pointer: A reference to the current stack pointer.
+    @param variables_stack_position: A reference to a map containing the stack positions of variables.
+    @param label_count: A reference to the current label count.
+    @param while_end_count: A reference to the current while loop end count.
+
+    @return: A list of assembly instructions representing the given statements.
+ *)
 let append_start_label (instructions : instr list ref) : instr list =
   instructions :=
     !instructions
@@ -388,7 +491,12 @@ let append_start_label (instructions : instr list ref) : instr list =
         EnvCall;
       ];
   !instructions
+(**
+    Converts a list of structure items (which represent functions) into a list of assembly instructions.
 
+    @param structures: A list of structure items, where each item represents a function.
+    @return: A list of assembly instructions representing the given functions.
+*)
 let program_to_asm_tree (structures : structure list) : instr list =
   let all = ref [] in
   let label_count = ref 0 in
