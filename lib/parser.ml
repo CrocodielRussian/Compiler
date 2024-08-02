@@ -158,10 +158,9 @@ and string_of_statement stmt count_of_t =
 
 and string_of_structure = function
   | FuncStruct (name, arg_var, stmts) ->
-      let count_of_t = 1 in
       Printf.sprintf "def %s(%s){\n%s\n}" name
         (String.concat ", " arg_var)
-        (string_of_statements stmts count_of_t)
+        (string_of_statements stmts 1)
 
 let initialised_functions =
   ref
