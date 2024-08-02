@@ -1,3 +1,4 @@
+(* This file included of optimize AST Oberon-like: const_opmize and dead_code_optimize*)
 open Parser
 open Exceptions
 
@@ -5,6 +6,14 @@ let initialised_variables = ref StringMap.(empty)
 let changeable_variables= ref StringSet.(empty)
 let bool_to_int = function true -> 1 | false -> 0
 let bool_of_int num = num != 0
+
+(* 
+   [n1] - left number of binary
+   [n2] - right number of binary
+   [op] - operation wiht that numbers
+
+   Return: const optimizer number
+*)
 
 let eval_binary_operation (n1 : int) (op : oper) (n2 : int) =
   match op with
@@ -27,6 +36,13 @@ let eval_binary_operation (n1 : int) (op : oper) (n2 : int) =
 
 let valid_op_const (op : oper) =
   match op with Plus -> 0 | Multiply -> 1 | _ -> 0
+
+(* 
+   [op] - left number of binary
+   [expressions] - 
+
+   Return: const optimizer number
+*)
 
 let constants_compression (op : oper) (expressions : expr list) : expr list =
   let compression_expressions = ref [] in
