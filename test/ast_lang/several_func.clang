@@ -1,0 +1,15 @@
+def third(){
+    print_int(10);
+}
+def second(a, b, c){
+    var d := a + b + c;
+    return d;
+}
+def first(a, b){
+    return a + b;
+}
+def main(){
+    var a := 0;
+    third();
+    return 0;
+}
