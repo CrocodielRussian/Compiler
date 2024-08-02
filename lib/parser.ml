@@ -1035,19 +1035,7 @@ let rec parse_while_loop_statement text pos initialised_variables =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-   The function first checks if the current position is past the end of the string.
-   If it is, it throws a ParserError.
-   Otherwise, it parses the boolean expression for the if statement.
-
-   The function then checks if the "then" keyword exists at the current position.
-   If it does not, it throws a ParserError.
-   If it does, it skips the "then" keyword and proceeds to parse the statements within the if block.
-
-   The function then checks if the "else" keyword exists at the current position.
-   If it does, it skips the "else" keyword and proceeds to parse the statements within the else block.
-   If it does not, it adds an empty statement to the else block.
-
-   Finally, the function returns an If record containing the boolean expression, the statements within the if block, and the statements within the else block.
+    Return: an If record containing the boolean expression, the statements within the if block, and the statements within the else block.
 *)
 and parse_if_statement text pos initialised_variables =
   if !pos > String.length text then
@@ -1099,15 +1087,7 @@ and parse_if_statement text pos initialised_variables =
    [check] is a function that checks if the parsing should continue.
    [initialised_variables] is a set of variables that have already been initialized.
 
-   The function initializes a list to keep track of the statements.
-   It then enters a loop to parse each statement.
-   It skips any whitespace characters.
-   It checks if the next characters form a keyword (e.g., "while", "if", "var", "return", "break").
-   Depending on the keyword, it calls the appropriate parsing function.
-   It adds the parsed statement to the list of statements.
-   It continues to the next statement until the [check] function returns false.
-
-   The function returns the list of statements.
+   Return: the list of statements.
 *)
 and parse_statements text pos check initialised_variables =
   let all = ref [] in
@@ -1169,20 +1149,7 @@ let check_func_stmts_end text pos =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-   The function first skips any whitespace characters.
-   It then checks if the next character is an open curly brace '{'.
-   If it is not, it throws a ParserError.
-   If it is, it increments the position and proceeds to parse the statements.
-
-   The function initializes a list to keep track of the statements.
-   It then enters a loop to parse each statement.
-   It skips any whitespace characters.
-   It checks if the next character is a closing curly brace '}'.
-   If it is, it breaks out of the loop.
-   If it is not, it assumes the next characters form a statement.
-   It parses the statement and adds it to the list of statements.
-
-   The function then returns the list of statements.
+   Return: list of statements.
 *)
 let parse_func_stmts text pos initialised_variables =
   skip_whitespaces text pos;
@@ -1208,46 +1175,7 @@ let parse_func_stmts text pos initialised_variables =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
 
-   The function first skips any whitespace characters.
-   It then checks if the identifier at the current position is "def".
-   If it is not, it throws a ParserError.
-   If it is, it proceeds to parse the function definition.
-
-   The function checks if the function name is empty.
-   If it is, it throws a ParserError.
-   If it is not, it checks if the function name has already been defined.
-   If it has, it throws a LogicErrorParsing.
-
-   The function adds the function name to the set of initialized functions.
-   It also initializes a set to keep track of the variables defined within the function.
-
-   The function then skips any whitespace characters.
-   It checks if the next character is an open parenthesis.
-   If it is not, it throws a ParserError.
-   If it is, it proceeds to parse the function arguments.
-
-   The function initializes a list to keep track of the function arguments.
-   It then enters a loop to parse each argument.
-   It skips any whitespace characters.
-   It checks if the next character is a comma or a close parenthesis.
-   If it is a comma, it increments the position and continues to the next argument.
-   If it is a close parenthesis, it breaks out of the loop.
-   If it is neither, it assumes the next characters form an argument identifier.
-   It checks if the argument identifier is empty.
-   If it is, it throws a ParserError.
-   If it is not, it adds the argument identifier to the list of function arguments.
-   It also adds the argument identifier to the set of initialized variables.
-
-   The function then adds the function name and the list of function arguments to the map of function argument counts.
-
-   The function skips any whitespace characters.
-   It checks if the next character is a close parenthesis.
-   If it is not, it throws a ParserError.
-   If it is, it increments the position.
-
-   The function then parses the statements within the function.
-
-   Finally, it returns a FuncStruct record containing the function name, the list of function arguments, and the list of statements within the function.
+    Return: a FuncStruct record containing the function name, the list of function arguments, and the list of statements within the function.
 *)
 let parse_func_structure text pos =
   skip_whitespaces text pos;
@@ -1325,20 +1253,10 @@ let parse_func_structure text pos =
 (**
   Parses a program represented as a string.
 
-  [text] is the string representation of the program.
-
-  The function starts parsing from the beginning of the string. It uses a mutable reference [pos] to keep track of the current position in the string.
-
-  The function calls [parse_structures] with the provided [text], [pos], and [check] as arguments.
-
-  [check] is a function that checks if the parsing should continue. In this case, it checks if the current position is less than the length of the string.
-
-  The function returns the result of parsing the structures in the program.
-
   [text] The string representation of the program.
   [pos] A mutable reference to keep track of the current position in the string.
   [check] A function that checks if the parsing should continue.
-  The function returns the result of parsing the structures in the program.
+  Return: the result of parsing the structures in the program.
 *)
 let parse_structures text pos check =
   let all = ref [] in
@@ -1377,7 +1295,7 @@ let check_program_end text pos =
 
    [check_program_end] is a function that checks if the parsing should continue. In this case, it checks if the current position is less than the length of the string.
 
-   The function returns the result of parsing the structures in the program.
+   Return: the result of parsing the structures in the program.
 *)
 let parse_program text =
   let pos = ref 0 in
