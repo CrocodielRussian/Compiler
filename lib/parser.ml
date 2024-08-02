@@ -286,12 +286,7 @@ let variable text pos initialised_variables =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
 
-   The function first skips any whitespace characters.
-   It then checks if the current position is within the bounds of the string.
-   If it is not, it returns false.
-   If it is, it matches the character at the current position with a semicolon.
-   If the character is a semicolon, it increments the position and returns true.
-   If the character is not a semicolon, it returns false.
+   Return: If the character is a semicolon then true, else.
 *)
 let check_exists_simple_stmt_close text pos =
   skip_whitespaces text pos;
@@ -332,12 +327,7 @@ let check_expr_stmt_close text pos expression =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
 
-   The function first skips any whitespace characters.
-   It then checks if the current position plus two is within the bounds of the string.
-   If it is not, it returns [InvalidAssing].
-   Otherwise, it matches the substring from the current position to the current position plus two with the assignment operators.
-   If a match is found, it updates the position and returns the corresponding [assign_oper] value.
-   If no match is found, it returns [InvalidAssing].
+    Return: Some operator.
 *)
 let parse_assign_operation text pos =
   skip_whitespaces text pos;
@@ -367,17 +357,7 @@ let parse_assign_operation text pos =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
 
-   The function first skips any whitespace characters.
-   It then checks if the current position is within the bounds of the string.
-   If it is not, it returns [Invalid].
-   Otherwise, it extracts the symbol at the current position.
-   If the symbol is '>' or '<', it checks if the next character is '='.
-   If it is, it returns the appropriate [oper] value.
-   If it isn't, it returns the appropriate [oper] value.
-   If the symbol is '!' or '=', it checks if the next character is '='.
-   If it is, it returns the appropriate [oper] value.
-   If it isn't, it throws a [ParserError] exception.
-   If the symbol doesn't match any of the above cases, it returns [Invalid].
+    Return: some Operator
 *)
 let parse_compare_operation text pos =
   skip_whitespaces text pos;
@@ -430,14 +410,7 @@ let parse_compare_operation text pos =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
 
-   The function first skips any whitespace characters.
-   It then checks if the current position is within the bounds of the string.
-   If it is not, it returns [Invalid].
-   Otherwise, it extracts the symbol at the current position.
-   If the symbol is '+' or '-', it checks if the next character is '='.
-   If it is, it returns [Invalid].
-   If it isn't, it increments the position and returns the appropriate [oper] value.
-   If the symbol is neither '+' nor '-', it returns [Invalid].
+   Return: Some operator.
 *)
 let parse_adding_operation text pos =
   skip_whitespaces text pos;
@@ -466,14 +439,7 @@ let parse_adding_operation text pos =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
 
-   The function first skips any whitespace characters.
-   It then checks if the current position is within the bounds of the string.
-   If it is not, it returns [Invalid].
-   Otherwise, it extracts the symbol at the current position.
-   If the symbol is '*' or '/', it checks if the next character is '='.
-   If it is, it returns [Invalid].
-   If it isn't, it increments the position and returns the appropriate [oper] value.
-   If the symbol is neither '*' nor '/', it returns [Invalid].
+   Return: Some operator
 *)
 let parse_multiply_operation text pos =
   skip_whitespaces text pos;
@@ -519,12 +485,7 @@ let parse_bool_operation text pos =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-   The function first skips any whitespace characters.
-   It then creates a reference to hold the parsed expression and another reference to hold the parsed operation.
-   It enters a loop that continues until the current position is past the end of the string or the parsed operation is invalid.
-   In each iteration, it updates the expression reference to hold an assignment expression with the current expression, operation, and the next simplest expression.
-   If the parsed expression is not a variable, it resets the position to the start position and parses a boolean expression instead.
-   After the loop, it returns the final parsed expression.
+    Return: parse experssion and return it.
 *)
 let rec parse_expr (text : string) (pos : int ref)
     (initialised_variables : StringSet.t ref) : expr =
@@ -552,7 +513,7 @@ let rec parse_expr (text : string) (pos : int ref)
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-   Returns the final parsed expression.
+   Do: parse of boolean expression and return it.
 *)
 and parse_bool_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -575,7 +536,7 @@ and parse_bool_expr text pos initialised_variables =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-   Returns the final parsed expression.
+   Do: parse compare expression and return it.
 *)
 and parse_compare_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -596,7 +557,7 @@ and parse_compare_expr text pos initialised_variables =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-   Returns the final parsed expression.
+   Do: parse math expression and return it.
 *)
 and parse_math_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -617,7 +578,8 @@ and parse_math_expr text pos initialised_variables =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-   Returns the final parsed expression.
+
+   Do: parse difficult expression and reutrn it.
 *)
 and parse_mult_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -640,7 +602,9 @@ and parse_mult_expr text pos initialised_variables =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
+
    Return result expression
+
 *)
 and parse_simplest_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -696,7 +660,7 @@ and parse_simplest_expr text pos initialised_variables =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
-
+   
    Return creates a [FuncCall] record.
 *)
 and parse_func_call ident text pos initialised_variables =
@@ -790,6 +754,9 @@ let parse_expr_statement text pos initialised_variables =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
+   
+   Do: skip of := 
+
 *)
 let assert_assign_statement_op text pos =
   skip_whitespaces text pos;
@@ -808,7 +775,9 @@ let assert_assign_statement_op text pos =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
-   Return [statement]
+
+   Do: add variable in initialize_variable and return statement
+
 *)
 let parser_assign_statement text pos initialised_variables =
   skip_whitespaces text pos;
@@ -932,18 +901,7 @@ let check_endif_exists_and_skip text pos =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-   The function first skips any whitespace characters.
-   It then checks if the current position is past the end of the string.
-   If it is, it throws a ParserError.
-   Otherwise, it parses the boolean expression for the while loop.
-
-   The function then checks if the "do" keyword exists at the current position.
-   If it does not, it throws a ParserError.
-   If it does, it skips the "do" keyword and proceeds to parse the statements within the while loop.
-
-   The function then checks if the "done" keyword exists at the current position.
-   If it does not, it throws a ParserError.
-   If it does, it skips the "done" keyword and returns the While record containing the boolean expression and the statements within the while loop.
+   Return: while loop statement
 *)
 let rec parse_while_loop_statement text pos initialised_variables =
   skip_whitespaces text pos;
