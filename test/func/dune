@@ -1,6 +1,11 @@
 (cram
  (deps
-  io.o simple_func.exe recursion.exe buffer_of_result_func.exe print_int.exe read_int.exe))
+  io.o
+  simple_func.exe
+  recursion.exe
+  buffer_of_result_func.exe
+  print_int.exe
+  read_int.exe))
 
 (rule
  (targets io.o)
@@ -26,6 +31,7 @@
    (run %{main} %{clang} simple_func.s --compile)
    (run riscv64-linux-gnu-as -march=rv64gc simple_func.s -o simple_func.o)
    (run riscv64-linux-gnu-ld simple_func.o %{lib} -o %{targets}))))
+
 (rule
  (targets recursion.exe)
  (deps
@@ -51,8 +57,14 @@
  (action
   (progn
    (run %{main} %{clang} buffer_of_result_func.s --compile)
-   (run riscv64-linux-gnu-as -march=rv64gc buffer_of_result_func.s -o buffer_of_result_func.o)
+   (run
+    riscv64-linux-gnu-as
+    -march=rv64gc
+    buffer_of_result_func.s
+    -o
+    buffer_of_result_func.o)
    (run riscv64-linux-gnu-ld buffer_of_result_func.o %{lib} -o %{targets}))))
+
 (rule
  (targets print_int.exe)
  (deps
@@ -66,6 +78,7 @@
    (run %{main} %{clang} print_int.s --compile)
    (run riscv64-linux-gnu-as -march=rv64gc print_int.s -o print_int.o)
    (run riscv64-linux-gnu-ld print_int.o %{lib} -o %{targets}))))
+
 (rule
  (targets read_int.exe)
  (deps

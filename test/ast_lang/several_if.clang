@@ -1,9 +1,6 @@
 def main(){
 	var a := 0;
 	var b := 10;
-	if (a > 10) then
-		print_int(a);
-	endif
 	if (a == 0) then
 		print_int(a);
 	else

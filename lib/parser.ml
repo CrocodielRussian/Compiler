@@ -6,6 +6,7 @@ type oper =
   | Plus
   | Multiply
   | Divide
+  | Mod
   | Minus
   | Low
   | More
@@ -73,8 +74,8 @@ let string_of_binary_operator = function
   | Unequal -> "!="
   | AndOper -> "&&"
   | OrOper -> "||"
-  | _ -> throw_except(ASTError("unexpected binary operator"))
-
+  | Mod -> "%"
+  | _ -> throw_except (ASTError "unexpected binary operator")
 [@@deriving show]
 
 let string_of_assign_operator = function
@@ -110,45 +111,70 @@ let rec string_of_expression = function
   | EmptyExpression -> ""
 
 let rec string_of_statements stmts count_of_t =
-
-  let str_lst = List.map (fun stmt -> string_of_statement stmt count_of_t) stmts in
-  String.concat ("\n" ) str_lst 
+  let str_lst =
+    List.map (fun stmt -> string_of_statement stmt count_of_t) stmts
+  in
+  String.concat "\n" str_lst
 
 and string_of_statement stmt count_of_t =
   match stmt with
   | EmptyStatement -> ""
-  | BreakStatement -> (String.make (count_of_t) '\t' ) ^ "break;"
-  | ReturnStatement e -> (String.make (count_of_t) '\t' ) ^ Printf.sprintf "return %s;" (string_of_expression e)
-  | Expression e -> (String.make (count_of_t) '\t' ) ^ Printf.sprintf "%s;" (string_of_expression e)
-  | AssignStatement (v, e2) -> (String.make (count_of_t) '\t' ) ^ Printf.sprintf "var %s := %s;"
-      v (string_of_expression e2)
+  | BreakStatement -> String.make count_of_t '\t' ^ "break;"
+  | ReturnStatement e ->
+      String.make count_of_t '\t'
+      ^ Printf.sprintf "return %s;" (string_of_expression e)
+  | Expression e ->
+      String.make count_of_t '\t'
+      ^ Printf.sprintf "%s;" (string_of_expression e)
+  | AssignStatement (v, e2) ->
+      String.make count_of_t '\t'
+      ^ Printf.sprintf "var %s := %s;" v (string_of_expression e2)
   | While (e1, stmts) ->
-    (String.make (count_of_t) '\t' ) ^ "while " ^  string_of_expression e1 ^ " do\n"  ^ (string_of_statements stmts (count_of_t + 1))
-      ^ "\n" ^ (String.make count_of_t '\t' ) ^ "done"
-    
+      String.make count_of_t '\t'
+      ^ "while " ^ string_of_expression e1 ^ " do\n"
+      ^ string_of_statements stmts (count_of_t + 1)
+      ^ "\n"
+      ^ String.make count_of_t '\t'
+      ^ "done"
   | If (e1, if_stmts, else_stmts) ->
       if else_stmts = [ EmptyStatement ] then
-        (String.make (count_of_t) '\t' ) 
-        ^ "if " ^ string_of_expression e1 ^ " then\n" ^ 
-        string_of_statements if_stmts (count_of_t+1)
-        ^ "\n" ^ (String.make (count_of_t) '\t' ) ^ "endif"
+        String.make count_of_t '\t'
+        ^ "if " ^ string_of_expression e1 ^ " then\n"
+        ^ string_of_statements if_stmts (count_of_t + 1)
+        ^ "\n"
+        ^ String.make count_of_t '\t'
+        ^ "endif"
       else
-        (String.make (count_of_t) '\t' ) ^ "if " ^ string_of_expression e1 ^ " then\n"
-        ^ (string_of_statements if_stmts (count_of_t+1))
-        ^ "\n" ^ (String.make (count_of_t) '\t' ) ^ "else\n"
-        ^ (string_of_statements else_stmts (count_of_t+1))
-        ^ "\n" ^ (String.make (count_of_t) '\t' ) ^ "endif"
+        String.make count_of_t '\t'
+        ^ "if " ^ string_of_expression e1 ^ " then\n"
+        ^ string_of_statements if_stmts (count_of_t + 1)
+        ^ "\n"
+        ^ String.make count_of_t '\t'
+        ^ "else\n"
+        ^ string_of_statements else_stmts (count_of_t + 1)
+        ^ "\n"
+        ^ String.make count_of_t '\t'
+        ^ "endif"
+
 and string_of_structure = function
-  | FuncStruct(name, arg_var, stmts) ->  let count_of_t = 1 in Printf.sprintf("def %s(%s){\n%s\n}") name (String.concat ", " arg_var) (string_of_statements stmts count_of_t)
+  | FuncStruct (name, arg_var, stmts) ->
+      Printf.sprintf "def %s(%s){\n%s\n}" name
+        (String.concat ", " arg_var)
+        (string_of_statements stmts 1)
 
 let initialised_functions =
-  ref (StringSet.of_list [ "_start"; "print_int"; "read_char"; "read_int" ])
+  ref
+    (StringSet.of_list
+       [ "_start"; "put_char"; "get_char"; "read_int"; "print_int" ])
 
 let functions_args_count : int StringMap.t ref =
   ref
     StringMap.(
-      empty |> add "print_int" 1 |> add "read_char" 0 |> add "read_int" 0)
+      empty |> add "put_char" 1 |> add "get_char" 0 |> add "read_int" 0
+      |> add "print_int" 1)
 
+let count_of_newline = ref 0
+let cur_pos_on_line = ref 0
 let is_alpha = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
 let is_digit = function '0' .. '9' -> true | _ -> false
 let is_whitespace = function ' ' | '\r' | '\t' | '\n' -> true | _ -> false
@@ -156,9 +182,6 @@ let is_newline = function '\n' -> true | _ -> false
 
 let expect_symbol text pos symbol =
   if pos >= 0 && pos < String.length text then text.[pos] == symbol else false
-
-let count_of_newline = ref 0
-let cur_pos_on_line = ref 0
 
 (**
    Skips any whitespace characters in the given string starting from the specified position.
@@ -437,6 +460,9 @@ let parse_multiply_operation text pos =
               incr cur_pos_on_line;
               Divide
           | _ -> Invalid)
+    | '%' ->
+        incr pos;
+        Mod
     | _ -> Invalid
 
 let parse_bool_operation text pos =
@@ -487,7 +513,7 @@ let rec parse_expr (text : string) (pos : int ref)
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-    Dos: parse of boolean expression and return it.
+   Do: parse of boolean expression and return it.
 *)
 and parse_bool_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -510,7 +536,7 @@ and parse_bool_expr text pos initialised_variables =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-  Do: parse compare expression and return it.
+   Do: parse compare expression and return it.
 *)
 and parse_compare_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -531,7 +557,7 @@ and parse_compare_expr text pos initialised_variables =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-  Do: parse math expression and return it.
+   Do: parse math expression and return it.
 *)
 and parse_math_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -552,7 +578,8 @@ and parse_math_expr text pos initialised_variables =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-  Do: parse difficult expression and reutrn it.
+
+   Do: parse difficult expression and reutrn it.
 *)
 and parse_mult_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -575,7 +602,9 @@ and parse_mult_expr text pos initialised_variables =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-  Retunr: Some expression
+
+   Return result expression
+
 *)
 and parse_simplest_expr text pos initialised_variables =
   skip_whitespaces text pos;
@@ -631,8 +660,8 @@ and parse_simplest_expr text pos initialised_variables =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
-
-    Return: Some Expression.
+   
+   Return creates a [FuncCall] record.
 *)
 and parse_func_call ident text pos initialised_variables =
   skip_whitespaces text pos;
@@ -710,7 +739,7 @@ and parse_func_call ident text pos initialised_variables =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-  Return: statement if it indclude not empty expression
+   Return finally expression statement
 *)
 let parse_expr_statement text pos initialised_variables =
   skip_whitespaces text pos;
@@ -725,8 +754,9 @@ let parse_expr_statement text pos initialised_variables =
    [text] is the string representation of the program.
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
-
+   
    Do: skip of := 
+
 *)
 let assert_assign_statement_op text pos =
   skip_whitespaces text pos;
@@ -747,6 +777,7 @@ let assert_assign_statement_op text pos =
    [initialised_variables] is a set of variables that have already been initialized.
 
    Do: add variable in initialize_variable and return statement
+
 *)
 let parser_assign_statement text pos initialised_variables =
   skip_whitespaces text pos;
@@ -780,10 +811,7 @@ let parser_assign_statement text pos initialised_variables =
    - [pos]: A mutable reference to keep track of the current position in the string.
 
    Returns:
-   - A boolean value indicating whether the current position represents the existence of a "do" construction.
-     The function returns true if the current position is less than the length of the string and the substring starting from the current position matches "do".
-     Otherwise, it returns false.
-     If the current position is past the end of the string, it throws a ParserError.
+   - [true] if find do else [false].
 *)
 let check_do_exists text pos =
   skip_whitespaces text pos;
@@ -805,9 +833,7 @@ let check_do_exists text pos =
    - [pos]: A mutable reference to keep track of the current position in the string.
 
    Returns:
-   - A boolean value indicating whether the current position represents the existence of a "done" construction.
-     The function returns true if the current position is less than the length of the string and the substring starting from the current position matches "done".
-     Otherwise, it returns false.
+   - [true] if not find done else [false].
 *)
 let check_done_exists text pos =
   skip_whitespaces text pos;
@@ -823,9 +849,7 @@ let check_done_exists text pos =
    - [pos]: A mutable reference to keep track of the current position in the string.
 
    Returns:
-   - A boolean value indicating whether the current position represents the existence of a "then" construction.
-     The function returns true if the current position is less than the length of the string and the substring starting from the current position matches "then".
-     Otherwise, it returns false.
+   - [true] if then exists else [false].
 *)
 let check_then_exists text pos =
   skip_whitespaces text pos;
@@ -1002,9 +1026,8 @@ and parse_statements text pos check initialised_variables =
               (ParserError
                  ( !count_of_newline,
                    !cur_pos_on_line,
-                   "unexpected expression " ^ (string_of_statement result 0))))
-    | "break" -> 
-         all := !all @ [ BreakStatement]
+                   "unexpected expression " ^ string_of_statement result 0 )))
+    | "break" -> all := !all @ [ BreakStatement ]
     | _ ->
         pos := !pos - String.length ident;
         let result = parse_expr_statement text pos initialised_variables in

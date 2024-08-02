@@ -13,4 +13,3 @@
   $ bash -c "echo -e '11\n20' |  qemu-riscv64 -L /usr/riscv64-linux-gnu -cpu rv64 ./read_int.exe"
   11
   20
-
