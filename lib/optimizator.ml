@@ -1,6 +1,8 @@
 open Parser
 open Exceptions
 
+let initialised_variables = ref StringMap.(empty)
+let changeable_variables= ref StringSet.(empty)
 let bool_to_int = function true -> 1 | false -> 0
 let bool_of_int num = num != 0
 
@@ -136,138 +138,184 @@ and const_optimize_stmts (stmts : statement list) : statement list =
     stmts;
   !new_stmts
 
-let rec func_call_deep_optimize_expr (ex : expr)
-    (result_statements : statement list ref)
-    (func_call_var_indexes : int StringMap.t ref) : expr =
-  match ex with
-  | Unary (op, subex) ->
-      let optisubex =
-        func_call_deep_optimize_expr subex result_statements
-          func_call_var_indexes
-      in
-      Unary (op, optisubex)
-  | Binary (subex1, op, subex2) ->
-      let optisubex1 =
-        func_call_deep_optimize_expr subex1 result_statements
-          func_call_var_indexes
-      in
-      let optisubex2 =
-        func_call_deep_optimize_expr subex2 result_statements
-          func_call_var_indexes
-      in
-      Binary (optisubex1, op, optisubex2)
-  | FuncCall (name, expressions) ->
-      let new_expressions = ref [] in
-      List.iter
-        (fun expression ->
-          new_expressions :=
-            !new_expressions
-            @ [
-                func_call_deep_optimize_expr expression result_statements
-                  func_call_var_indexes;
-              ])
-        expressions;
-      let func_call_index = ref 0 in
-      if StringMap.mem name !func_call_var_indexes then
-        func_call_index := StringMap.find name !func_call_var_indexes + 1;
-      let result_var_name = Printf.sprintf "call_%s_%d" name !func_call_index in
-      result_statements :=
-        !result_statements
-        @ [
-            AssignStatement (result_var_name, FuncCall (name, !new_expressions));
-          ];
-      func_call_var_indexes :=
-        StringMap.add name !func_call_index !func_call_var_indexes;
-      Variable result_var_name
-  | AssignExpression (v, op, subex) ->
-      let optisubex =
-        func_call_deep_optimize_expr subex result_statements
-          func_call_var_indexes
-      in
-      result_statements :=
-        !result_statements
-        @ [ Expression (AssignExpression (v, op, optisubex)) ];
-      Variable v
-  | _ -> ex
+and check_changer_op op  =   
+  match op with
+  | DefaultAssign -> true
+  | PlusAssign -> true
+  | MultiplyAssign -> true
+  | DivideAssign -> true
+  | MinusAssign -> true
+  | InvalidAssing -> false
 
-let rec func_call_optimize_expr_stmt (ex : expr)
-    (func_call_var_indexes : int StringMap.t ref) : statement list =
+and unused_stmt_optimize_assign_statement var ex = 
   match ex with
-  | Variable _ -> []
-  | Number _ -> []
-  | Unary (_, subex) -> func_call_optimize_expr_stmt subex func_call_var_indexes
-  | AssignExpression (v, op, subex) ->
-      let result_statements = ref [] in
-      let optisubex =
-        func_call_deep_optimize_expr subex result_statements
-          func_call_var_indexes
-      in
-      !result_statements @ [ Expression (AssignExpression (v, op, optisubex)) ]
-  | Binary (subex1, _, subex2) ->
-      func_call_optimize_expr_stmt subex1 func_call_var_indexes
-      @ func_call_optimize_expr_stmt subex2 func_call_var_indexes
-  | FuncCall (_, _) -> [ Expression ex ]
-  | EmptyExpression -> []
+  | Number n -> initialised_variables := StringMap.add var n !initialised_variables
+  | _ -> failwith "To Do"
+  
+and check_binary_operation (n1 : int) (op : oper) (n2 : int) =
+  match op with
+  | Low -> (n1 < n2)
+  | LowOrEqual -> (n1 <= n2)
+  | More -> (n1 > n2)
+  | MoreOrEqual -> (n1 >= n2)
+  | Equal -> (n1 == n2)
+  | Unequal -> (n1 != n2)
+  | _ -> throw_except (ASTError "unexpected operator")
 
-let rec func_call_optimize_stmt (stmt : statement)
-    (func_call_var_indexes : int StringMap.t ref) : statement list =
+and unused_stmt_optimize_binary_expression ex1 op ex2 = 
+  match ex1, ex2 with
+  | Variable v, Number n2 -> 
+  (
+    if StringMap.mem v !initialised_variables then
+    (
+      let n1 = StringMap.find v !initialised_variables in check_binary_operation n1 op n2
+    )
+    else 
+    (
+      false
+    )
+  )                 
+  | Number n1, Number n2 -> check_binary_operation n1 op n2
+  | _ -> false
+and unused_stmt_optimize_expression (ex : expr) : bool =
+  match ex with
+  | Number n ->  bool_of_int n
+  | Binary (ex1, op, ex2) -> unused_stmt_optimize_binary_expression ex1 op ex2
+  | _ -> failwith "unexpected expression"
+
+and check_of_changeable_variables_in_expression ex = 
+  match ex with
+  | AssignExpression(v,_,_) -> changeable_variables := StringSet.add v !changeable_variables
+  | _ -> ()
+and check_of_changeable_variables_in_assign_statement v ex = 
+  match ex with
+  | AssignExpression(_,_,_) -> changeable_variables := StringSet.add v !changeable_variables
+  | _ -> ()
+and check_of_changeable_variables_in_stmt stmt = 
   match stmt with
-  | Expression ex -> func_call_optimize_expr_stmt ex func_call_var_indexes
-  | AssignStatement (v, subex) ->
-      let result_statements = ref [] in
-      let optisubex =
-        func_call_deep_optimize_expr subex result_statements
-          func_call_var_indexes
-      in
-      !result_statements @ [ AssignStatement (v, optisubex) ]
-  | While (_, _) -> [ stmt ]
-  | If (subex, then_branch, else_branch) ->
-      let result_statements = ref [] in
-      let optisubex =
-        func_call_deep_optimize_expr subex result_statements
-          func_call_var_indexes
-      in
-      !result_statements
-      @ [
-          If
-            ( optisubex,
-              func_call_optimize_stmts then_branch func_call_var_indexes,
-              func_call_optimize_stmts else_branch func_call_var_indexes );
-        ]
-  | ReturnStatement subex ->
-      let result_statements = ref [] in
-      let optisubex =
-        func_call_deep_optimize_expr subex result_statements
-          func_call_var_indexes
-      in
-      !result_statements @ [ ReturnStatement optisubex ]
-  | EmptyStatement -> []
-  | BreakStatement -> [ stmt ]
+  | AssignStatement(v, ex) -> check_of_changeable_variables_in_assign_statement v ex
+  | If(_, if_stmts, else_stmts) ->
+  (
+    check_of_changeable_variables_in_stmts if_stmts;
+    check_of_changeable_variables_in_stmts else_stmts
+  )
+  | While(_, while_stmts) ->
+    (
+      check_of_changeable_variables_in_stmts while_stmts;
+    )
+  | Expression ex -> check_of_changeable_variables_in_expression ex
+  | _ -> ()
+and check_of_changeable_variables_in_stmts stmts = 
+  List.iter(fun stmt -> check_of_changeable_variables_in_stmt stmt) stmts
 
-and func_call_optimize_stmts (stmts : statement list)
-    (func_call_var_indexes : int StringMap.t ref) : statement list =
+and check_of_changeable_variables stmt = 
+  match stmt with
+  | AssignStatement (v, ex) -> 
+  (
+    check_of_changeable_variables_in_assign_statement v ex;
+  )
+  | If (_, if_stmts, else_stmts) -> 
+  (
+    check_of_changeable_variables_in_stmts if_stmts; 
+    check_of_changeable_variables_in_stmts else_stmts
+  )
+  | While (_, while_stmts) -> check_of_changeable_variables_in_stmts while_stmts; 
+  | _ -> ()
+    
+and unused_stmt_optimize_stmts (stmts : statement list) : statement list = 
   let new_stmts = ref [] in
-  List.iter
-    (fun stmt ->
-      new_stmts :=
-        !new_stmts @ func_call_optimize_stmt stmt func_call_var_indexes)
-    stmts;
+  
+  List.iter (fun stmt -> check_of_changeable_variables stmt) stmts;
+  List.iter (fun stmt -> new_stmts := !new_stmts @ [unused_stmt_return stmt]) stmts;
   !new_stmts
+and reverse_binary_operation op = 
+  match op with
+  | Low -> MoreOrEqual
+  | LowOrEqual -> More
+  | More -> LowOrEqual
+  | MoreOrEqual -> Low
+  | Equal -> Unequal
+  | Unequal -> Equal
+  | _ -> throw_except (ASTError "unexpected operator")
 
-let optimize_structure (st : structure) : structure =
+and unused_stmt_reverse_expression (ex : expr) : expr =
+  match ex with
+  | Number n -> if n == 0 then (Number 1) else (Number 0)
+  | Binary (ex1, op, ex2) -> Binary(ex1, reverse_binary_operation op, ex2)
+  | _ -> failwith "unexpected expression"
+
+and check_changeable_variable_in_binary_operation ex1 = 
+  match ex1 with
+  | Variable v -> StringSet.mem v !changeable_variables
+  | _ -> false
+
+and check_changeable_variable_in_ex ex = 
+  match ex with
+  | Number _ -> false;
+  | Binary (ex1, _, _) -> check_changeable_variable_in_binary_operation ex1
+  | _ -> failwith "unexpected expression"
+and unused_stmt_return stmt = 
+  match stmt with
+  | AssignStatement (v, ex) -> 
+  (
+    unused_stmt_optimize_assign_statement v ex;
+    stmt 
+  )
+  | If (ex, if_stmts, else_stmts) -> 
+  (
+  if unused_stmt_optimize_expression ex then
+    If(ex, unused_stmt_optimize_stmts if_stmts, unused_stmt_optimize_stmts else_stmts)
+  else (
+      if check_changeable_variable_in_ex ex then 
+      (
+        If(ex, unused_stmt_optimize_stmts if_stmts, unused_stmt_optimize_stmts else_stmts)
+      )
+      else 
+      (
+      (* We must correct it*)
+        if (List.nth else_stmts 0 != EmptyStatement) then
+        (
+          If(unused_stmt_reverse_expression ex, unused_stmt_optimize_stmts else_stmts, [EmptyStatement])
+        )
+        else
+          EmptyStatement
+      )
+    )
+  )
+  | While (ex, while_stmts) ->
+  (
+  if unused_stmt_optimize_expression ex then
+    While(ex, unused_stmt_optimize_stmts while_stmts)
+  else 
+    if check_changeable_variable_in_ex ex then
+      While(ex, unused_stmt_optimize_stmts while_stmts)
+    else 
+      EmptyStatement
+  )
+  | _ ->  stmt
+
+(* let optimize_empty_if (st: structure) : structure =  *)
+let const_optimize_structure (st : structure) : structure =
   match st with
   | FuncStruct (name, var_args, stmts) ->
-      (* let func_call_var_indexes = ref StringMap.empty in *)
       FuncStruct (name, var_args, const_optimize_stmts stmts)
+let unused_stmt_optimize_structure (st : structure) : structure =
+  match st with
+  | FuncStruct (name, var_args, stmts) ->
+      FuncStruct (name, var_args, unused_stmt_optimize_stmts stmts)
 
 let optimize_structures (structures : structure list) : structure list =
-  let new_structures = ref [] in
+  let const_optimize_structures = ref [] in
   List.iter
-    (fun st -> new_structures := !new_structures @ [ optimize_structure st ])
+    (fun st -> const_optimize_structures := !const_optimize_structures @ [ const_optimize_structure st ])
     structures;
-  !new_structures
+  let optimize_unused_stmt = ref [] in
+  List.iter
+  (fun st -> optimize_unused_stmt := !optimize_unused_stmt @ [ unused_stmt_optimize_structure st ])
+  !const_optimize_structures;
+  List.iter(fun st -> show_structure st |> print_endline) !optimize_unused_stmt;
+  !optimize_unused_stmt
 
 let optimize_ast (ast : structure list) : structure list =
   let new_ast = optimize_structures ast in
-  (* List.iter (fun e -> print_endline (show_structure e)) new_ast; *)
   new_ast
