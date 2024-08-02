@@ -1,0 +1,9 @@
+def main(){
+    print_int(0);
+    print_int(10);
+    print_int(-10);
+    print_int(10002221);
+    print_int(-10002221);
+
+    return 0;
+}

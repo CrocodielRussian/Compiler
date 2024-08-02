@@ -1,0 +1,60 @@
+(cram
+ (deps simple_variable.clang several_while.clang several_if.clang simple_variable.txt several_while.txt several_if.txt))
+
+(rule
+ (targets simple_variable.txt)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang simple_variable.clang)
+ )
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} %{targets} --ast_lang)
+  )
+ )
+)
+
+(rule
+ (targets several_while.txt)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang several_while.clang)
+ )
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} %{targets} --ast_lang)
+  )
+ )
+)
+(rule
+ (targets several_if.txt)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang several_if.clang)
+ )
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} %{targets} --ast_lang)
+  )
+ )
+)
+(rule
+ (targets several_func.txt)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang several_func.clang)
+ )
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} %{targets} --ast_lang)
+  )
+ )
+)

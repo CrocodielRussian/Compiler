@@ -1,9 +1,9 @@
 def main(){
     var n := 1;
     var acc := 1;
-    while(n < 6) do
-        n += 1;
+    while(n < 7) do
         acc := acc * n;
+        n += 1;
     done 
     print_int(acc);
 

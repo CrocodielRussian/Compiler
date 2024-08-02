@@ -37,7 +37,7 @@ module Main = struct
 
   let test_ast_lang out_filename =
     let all = ref "" in
-    List.iter(fun str -> (all := !all ^ (show_structure str))) (parse_program text |> optimize_ast);
+    List.iter(fun str -> (all := !all ^ (string_of_structure str) ^ "\n")) (parse_program text |> optimize_ast);
     append_to_file out_filename !all
   
   let test_ast_asm out_filename =
@@ -45,7 +45,7 @@ module Main = struct
     List.iter(fun str -> (all := !all ^ (show_instr str))) (parse_program text |> optimize_ast |> program_to_asm_tree);
     append_to_file out_filename !all
 
-  let () =
+  let () = 
   match Sys.argv.(3) with 
   | "--compile" -> compile output_file
   | "--ast_lang" -> test_ast_lang output_file

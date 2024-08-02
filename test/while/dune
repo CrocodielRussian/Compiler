@@ -4,6 +4,7 @@
   simple_while.exe
   while_with_break.exe
   fibonacci.exe
+  inner_while.exe
   factorial.exe))
 
 (rule
@@ -77,3 +78,17 @@
    (run %{main} %{clang} factorial.s --compile)
    (run riscv64-linux-gnu-as -march=rv64gc factorial.s -o factorial.o)
    (run riscv64-linux-gnu-ld factorial.o %{lib} -o %{targets}))))
+
+(rule
+ (targets inner_while.exe)
+ (deps
+  (:main %{project_root}/_build/default/bin/main.exe)
+  (:clang inner_while.clang)
+  (:lib io.o))
+ (mode
+  (promote (until-clean)))
+ (action
+  (progn
+   (run %{main} %{clang} inner_while.s --compile)
+   (run riscv64-linux-gnu-as -march=rv64gc inner_while.s -o inner_while.o)
+   (run riscv64-linux-gnu-ld inner_while.o %{lib} -o %{targets}))))

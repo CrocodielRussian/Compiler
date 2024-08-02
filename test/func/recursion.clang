@@ -1,0 +1,11 @@
+def nsum(n) {
+    if n <= 0 then 
+      return 0;
+    endif
+    
+    return n + nsum(n - 1);
+}
+def main(){
+    print_int(nsum(5));
+    return 0;
+}
