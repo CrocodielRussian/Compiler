@@ -877,18 +877,7 @@ let check_endif_exists_and_skip text pos =
    [pos] is a mutable reference to keep track of the current position in the string.
    [initialised_variables] is a set of variables that have already been initialized.
 
-   The function first skips any whitespace characters.
-   It then checks if the current position is past the end of the string.
-   If it is, it throws a ParserError.
-   Otherwise, it parses the boolean expression for the while loop.
-
-   The function then checks if the "do" keyword exists at the current position.
-   If it does not, it throws a ParserError.
-   If it does, it skips the "do" keyword and proceeds to parse the statements within the while loop.
-
-   The function then checks if the "done" keyword exists at the current position.
-   If it does not, it throws a ParserError.
-   If it does, it skips the "done" keyword and returns the While record containing the boolean expression and the statements within the while loop.
+   Return: while loop statement
 *)
 let rec parse_while_loop_statement text pos initialised_variables =
   skip_whitespaces text pos;
